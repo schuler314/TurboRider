@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Turbo Rider</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for post-ride metrics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Leaflet JS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Roboto+Mono:ital,wght@0,700;1,700&display=swap');
+        
+        :root {
+            --bg-color: #f1f5f9;      /* slate-100 */
+            --text-color: #0f172a;    /* slate-900 */
+            --panel-color: #ffffff;   /* white */
+            --border-color: #cbd5e1;  /* slate-300 */
+            --muted-color: #64748b;   /* slate-500 */
+            --nav-bg: #ffffff;
+            --overlay-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #020617;      /* slate-950 */
+            --text-color: #f8fafc;    /* slate-50 */
+            --panel-color: #0f172a;   /* slate-900 */
+            --border-color: #1e293b;  /* slate-800 */
+            --muted-color: #94a3b8;   /* slate-400 */
+            --nav-bg: #0f172a;
+            --overlay-bg: rgba(2, 6, 23, 0.95);
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+            transition: background-color 0.3s, color 0.3s;
+            background-image: linear-gradient(var(--border-color) 1px, transparent 1px), linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center top;
+        }
+
+        .theme-panel { background-color: var(--panel-color); border-color: var(--border-color); }
+        .theme-text { color: var(--text-color); }
+        .theme-muted { color: var(--muted-color); }
+        .theme-border { border-color: var(--border-color); }
+        .theme-nav { background-color: var(--nav-bg); }
+        .theme-overlay { background-color: var(--overlay-bg); }
+
+        .metric-value { 
+            font-family: 'Roboto Mono', monospace; 
+            font-style: italic; 
+            font-variant-numeric: tabular-nums; /* FIX: Prevents horizontal jittering of numbers */
+        }
+        
+        .no-select { user-select: none; -webkit-user-select: none; }
+        .fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        #map { height: 250px; width: 100%; border-radius: 1.25rem; z-index: 1; }
+        
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+    </style>
+</head>
+<body data-theme="dark" class="h-screen w-screen overflow-hidden flex flex-col no-select relative">
+
+    <!-- TOP NAVIGATION -->
+    <header id="main-header" class="theme-nav theme-border border-b p-4 px-6 flex justify-between items-center z-20 shrink-0 shadow-sm transition-colors">
+        <div class="flex items-center gap-2 text-cyan-400">
+            <i data-lucide="zap" class="w-7 h-7 fill-current"></i>
+            <h1 class="text-2xl font-black tracking-wider uppercase italic">Turbo Rider</h1>
+        </div>
+        <button onclick="app.switchView('settings')" class="p-3 rounded-2xl theme-panel active:scale-90 transition-transform shadow-md theme-border border">
+            <i data-lucide="settings" class="theme-text w-5 h-5"></i>
+        </button>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 relative overflow-y-auto w-full max-w-2xl mx-auto flex flex-col">
+        
+        <!-- VIEW 1: START SCREEN -->
+        <div id="view-start" class="absolute inset-0 flex flex-col items-center justify-center p-6 space-y-10 fade-in">
+            <div class="text-center space-y-2 bg-[var(--panel-color)]/80 backdrop-blur p-6 rounded-3xl theme-border border shadow-lg">
+                <h2 class="text-4xl font-black theme-text italic">READY TO GO?</h2>
+                <p class="theme-muted font-bold tracking-wide">Grab your helmet and let's ride!</p>
+            </div>
+            
+            <button onclick="app.startRide(false)" class="w-64 h-64 rounded-full bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 shadow-[0_0_60px_rgba(6,182,212,0.4)] flex flex-col items-center justify-center transition-transform transform active:scale-90 border-8 border-cyan-300/30 shrink-0">
+                <i data-lucide="rocket" class="w-24 h-24 text-white -mt-4"></i>
+                <span class="text-white font-black text-3xl mt-2 tracking-widest italic">START</span>
+            </button>
+
+            <button onclick="app.startRide(true)" class="mt-8 px-8 py-4 rounded-2xl theme-panel theme-text theme-border border-2 flex items-center gap-3 font-bold active:scale-95 transition-transform shadow-lg shrink-0">
+                <i data-lucide="gamepad-2" class="w-6 h-6 text-amber-500"></i>
+                Simulate Ride (Test Mode)
+            </button>
+        </div>
+
+        <!-- VIEW 2: ACTIVE RIDE DASHBOARD (Completely Resposive & Landscape Optimized) -->
+        <div id="view-ride" class="absolute inset-0 hidden flex-col landscape:flex-row p-4 gap-4 h-full w-full bg-[var(--bg-color)] z-30">
+            
+            <!-- Left Col (Landscape) / Top (Portrait): Timer & Speed -->
+            <div class="flex-1 flex flex-col items-center justify-center w-full min-h-0 relative">
+                <div class="flex flex-col items-center justify-center mb-2 mt-2 shrink-0">
+                    <div id="gps-status" class="flex items-center gap-2 text-cyan-500 bg-cyan-500/10 px-4 py-1.5 rounded-full text-xs font-black tracking-widest mb-1 landscape:mb-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                        GPS ACTIVE
+                    </div>
+                    <div id="ride-timer" class="metric-value text-5xl sm:text-6xl landscape:text-5xl font-black theme-text tracking-tighter drop-shadow-sm">00:00:00</div>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center justify-center mt-2 relative w-full min-h-0">
+                    <div class="theme-panel border-4 theme-border w-full h-full rounded-[2rem] sm:rounded-[3rem] shadow-xl flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-b from-[var(--panel-color)] to-[var(--bg-color)] min-h-0">
+                        <!-- Auto Pause Overlay -->
+                        <div id="auto-pause-indicator" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center hidden transition-opacity">
+                            <i data-lucide="pause-circle" class="w-12 h-12 text-amber-500 mb-2"></i>
+                            <span class="text-xl sm:text-2xl font-black text-white italic tracking-wider">AUTO-PAUSED</span>
+                        </div>
+                        
+                        <div class="flex items-baseline justify-center px-2">
+                            <span id="current-speed" class="metric-value text-[25vw] sm:text-[20vw] landscape:text-[25vh] font-black leading-none text-cyan-500 tracking-tighter drop-shadow-md truncate">0.0</span>
+                            <span id="speed-unit-display" class="ml-2 text-xl sm:text-3xl theme-muted font-black uppercase italic shrink-0">mph</span>
+                        </div>
+                        <div class="theme-muted text-xs sm:text-sm uppercase tracking-widest mt-2 font-black shrink-0">Current Speed</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Col (Landscape) / Bottom (Portrait): Tappables & Buttons -->
+            <div class="flex-1 flex flex-col justify-between w-full min-h-0 pt-2 landscape:pt-0">
+                <div id="tappable-metrics-area" class="cursor-pointer active:scale-[0.99] transition-transform w-full shrink-0">
+                    <div class="flex justify-center mb-3">
+                        <div class="theme-panel border-2 theme-border rounded-full p-1.5 flex shadow-md bg-[var(--bg-color)] relative">
+                            <div id="tab-total" class="px-6 py-2 rounded-full text-sm font-black bg-cyan-500 text-white transition-colors tracking-wide w-28 text-center">TOTAL</div>
+                            <div id="tab-lap" class="px-6 py-2 rounded-full text-sm font-black theme-muted transition-colors tracking-wide w-28 text-center">LAP <span id="lap-counter"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pointer-events-none">
+                        <div class="theme-panel border-2 theme-border shadow-md rounded-[2rem] p-4 flex flex-col items-center justify-center">
+                            <span id="current-distance" class="metric-value text-4xl sm:text-5xl font-black theme-text text-amber-500">0.00</span>
+                            <span class="theme-muted text-[10px] sm:text-xs uppercase tracking-widest mt-1 font-black">Dist (<span class="unit-dist">mi</span>)</span>
+                        </div>
+                        <div class="theme-panel border-2 theme-border shadow-md rounded-[2rem] p-4 flex flex-col items-center justify-center">
+                            <span id="avg-speed" class="metric-value text-4xl sm:text-5xl font-black theme-text">0.0</span>
+                            <span class="theme-muted text-[10px] sm:text-xs uppercase tracking-widest mt-1 font-black">Avg (<span class="unit-speed">mph</span>)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="theme-muted text-[9px] sm:text-[10px] uppercase tracking-widest mt-3 font-black flex items-center justify-center gap-2 opacity-60 landscape:hidden">
+                        <i data-lucide="chevrons-left" class="w-3 h-3"></i> SWIPE OR TAP TO TOGGLE <i data-lucide="chevrons-right" class="w-3 h-3"></i>
+                    </div>
+                </div>
+                
+                <!-- Spacer to push buttons to bottom in landscape -->
+                <div class="flex-1"></div>
+                
+                <div class="flex gap-3 w-full mt-4 shrink-0">
+                    <button onclick="app.markLap()" class="flex-1 py-4 sm:py-5 rounded-3xl bg-amber-500 active:bg-amber-600 text-white font-black text-lg sm:text-xl shadow-[0_8px_0_rgba(217,119,6,1)] active:shadow-[0_0px_0_rgba(217,119,6,1)] active:translate-y-[8px] flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="timer" class="w-6 h-6"></i>
+                        LAP
+                    </button>
+                    
+                    <button id="btn-stop" class="flex-1 py-4 sm:py-5 rounded-3xl bg-red-500 active:bg-red-700 text-white font-black text-lg sm:text-xl shadow-[0_8px_0_rgba(185,28,28,1)] active:shadow-[0_0px_0_rgba(185,28,28,1)] active:translate-y-[8px] flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="square" class="w-5 h-5 fill-current"></i>
+                        HOLD STOP
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: HISTORY & METRICS -->
+        <div id="view-history" class="absolute inset-0 hidden flex-col p-4 overflow-y-auto fade-in pb-28">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black theme-text tracking-wide italic">MY RIDES</h2>
+                <button onclick="app.exportCSV()" class="text-sm font-bold bg-cyan-500 text-white px-4 py-2 rounded-xl shadow-sm active:scale-95 transition-transform flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> CSV
+                </button>
+            </div>
+            
+            <div id="empty-history" class="text-center theme-muted mt-20 hidden">
+                <i data-lucide="map-pin-off" class="w-24 h-24 mx-auto mb-6 opacity-30 text-cyan-500"></i>
+                <p class="font-bold text-lg">No rides recorded yet.</p>
+                <p class="text-sm mt-2 opacity-70">Go out and shred some trails!</p>
+            </div>
+
+            <div id="history-list" class="space-y-4">
+                <!-- History items populated here -->
+            </div>
+        </div>
+
+        <!-- VIEW 4: SETTINGS -->
+        <div id="view-settings" class="absolute inset-0 hidden flex-col p-4 overflow-y-auto fade-in pb-28">
+            <h2 class="text-3xl font-black mb-6 theme-text tracking-wide italic">SETTINGS</h2>
+            
+            <div class="space-y-4">
+                <div class="font-black theme-muted text-sm uppercase tracking-widest pl-2">App Preferences</div>
+                
+                <!-- Theme Toggle -->
+                <div class="theme-panel border-2 theme-border rounded-3xl p-5 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-indigo-500/10 rounded-xl text-indigo-500"><i data-lucide="moon"></i></div>
+                        <div>
+                            <div class="font-bold text-lg theme-text">Dark Mode</div>
+                            <div class="text-sm theme-muted font-medium">Night rider activated</div>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-theme" class="sr-only peer" checked>
+                        <div class="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-500"></div>
+                    </label>
+                </div>
+
+                <!-- Units Toggle -->
+                <div class="theme-panel border-2 theme-border rounded-3xl p-5 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><i data-lucide="ruler"></i></div>
+                        <div>
+                            <div class="font-bold text-lg theme-text">System</div>
+                            <div class="text-sm theme-muted font-medium">MPH vs KM/H</div>
+                        </div>
+                    </div>
+                    <button id="unit-toggle" class="px-5 py-2.5 rounded-xl bg-cyan-500 text-white font-black text-sm shadow-sm active:scale-95 transition-transform tracking-wider">
+                        IMPERIAL
+                    </button>
+                </div>
+
+                <!-- Wake Lock -->
+                <div class="theme-panel border-2 theme-border rounded-3xl p-5 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-amber-500/10 rounded-xl text-amber-500"><i data-lucide="sun-medium"></i></div>
+                        <div>
+                            <div class="font-bold text-lg theme-text">Screen Awake</div>
+                            <div class="text-sm theme-muted font-medium">Keep phone on</div>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-wakelock" class="sr-only peer" checked>
+                        <div class="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-500"></div>
+                    </label>
+                </div>
+
+                <div class="font-black theme-muted text-sm uppercase tracking-widest pl-2 mt-8">Rider Profile</div>
+                
+                <div class="theme-panel border-2 theme-border rounded-3xl p-5 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-red-500/10 rounded-xl text-red-500"><i data-lucide="weight"></i></div>
+                        <div class="font-bold text-lg theme-text">Body Weight</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="setting-weight" value="160" class="w-20 bg-[var(--bg-color)] border theme-border rounded-xl p-2 text-center text-xl theme-text font-black outline-none focus:border-cyan-500">
+                        <span id="label-weight-unit" class="text-sm font-black theme-muted">lbs</span>
+                    </div>
+                </div>
+
+                <div class="theme-panel border-2 theme-border rounded-3xl p-5 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-purple-500/10 rounded-xl text-purple-500"><i data-lucide="user"></i></div>
+                        <div class="font-bold text-lg theme-text">Age</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="setting-age" value="30" class="w-20 bg-[var(--bg-color)] border theme-border rounded-xl p-2 text-center text-xl theme-text font-black outline-none focus:border-cyan-500">
+                        <span class="text-sm font-black theme-muted">yrs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 5: TROPHIES -->
+        <div id="view-trophies" class="absolute inset-0 hidden flex-col p-4 overflow-y-auto fade-in pb-28">
+            <h2 class="text-3xl font-black mb-4 theme-text tracking-wide italic">CAREER STATS</h2>
+            
+            <div class="grid grid-cols-2 gap-3 mb-8">
+                <div class="theme-panel border-2 theme-border rounded-[2rem] p-4 flex flex-col items-center justify-center shadow-sm">
+                    <span class="theme-muted text-[10px] uppercase font-black tracking-widest">Total Rides</span>
+                    <span id="stat-total-rides" class="metric-value text-3xl font-black text-cyan-500 mt-1">0</span>
+                </div>
+                <div class="theme-panel border-2 theme-border rounded-[2rem] p-4 flex flex-col items-center justify-center shadow-sm">
+                    <span class="theme-muted text-[10px] uppercase font-black tracking-widest">Max Speed (<span class="unit-speed"></span>)</span>
+                    <span id="stat-max-speed" class="metric-value text-3xl font-black text-amber-500 mt-1">0.0</span>
+                </div>
+                <div class="theme-panel border-2 theme-border rounded-[2rem] p-4 flex flex-col items-center justify-center shadow-sm">
+                    <span class="theme-muted text-[10px] uppercase font-black tracking-widest">Total Dist (<span class="unit-dist"></span>)</span>
+                    <span id="stat-total-dist" class="metric-value text-3xl font-black text-indigo-500 mt-1">0.0</span>
+                </div>
+                <div class="theme-panel border-2 theme-border rounded-[2rem] p-4 flex flex-col items-center justify-center shadow-sm">
+                    <span class="theme-muted text-[10px] uppercase font-black tracking-widest">Max Climb (<span class="unit-elev"></span>)</span>
+                    <span id="stat-max-climb" class="metric-value text-3xl font-black text-emerald-500 mt-1">0</span>
+                </div>
+            </div>
+
+            <h2 class="text-3xl font-black mb-4 theme-text tracking-wide italic">BADGE SERIES</h2>
+            <div id="trophy-list" class="grid grid-cols-2 gap-4">
+                <!-- Trophies render here -->
+            </div>
+            
+            <h2 class="text-3xl font-black mb-4 mt-8 theme-text tracking-wide italic">SPECIAL AWARDS</h2>
+            <div id="special-trophy-list" class="grid grid-cols-2 gap-4">
+                <!-- Special Trophies render here -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav id="bottom-nav" class="theme-nav theme-border border-t flex justify-around pb-6 pt-2 shrink-0 z-20 transition-colors">
+        <button onclick="app.switchView('start')" id="nav-ride" class="flex-1 py-3 flex flex-col items-center gap-1 text-cyan-500 transition-colors">
+            <i data-lucide="zap" class="w-6 h-6"></i>
+            <span class="text-xs font-black tracking-widest">RIDE</span>
+        </button>
+        <button onclick="app.switchView('history')" id="nav-history" class="flex-1 py-3 flex flex-col items-center gap-1 theme-muted transition-colors">
+            <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+            <span class="text-xs font-black tracking-widest">STATS</span>
+        </button>
+        <button onclick="app.switchView('trophies')" id="nav-trophies" class="flex-1 py-3 flex flex-col items-center gap-1 theme-muted transition-colors">
+            <i data-lucide="award" class="w-6 h-6"></i>
+            <span class="text-xs font-black tracking-widest">AWARDS</span>
+        </button>
+    </nav>
+
+    <!-- STOP CONFIRMATION MODAL -->
+    <div id="modal-stop" class="fixed inset-0 theme-overlay z-50 hidden flex-col items-center justify-center p-6 backdrop-blur-md overflow-y-auto">
+        <div class="theme-panel theme-border border-2 p-8 rounded-[2rem] w-full max-w-sm shadow-2xl text-center space-y-6 my-auto">
+            <h3 class="text-4xl font-black theme-text italic">PAUSED</h3>
+            
+            <div id="pause-photo-gallery" class="flex gap-3 overflow-x-auto pb-2 hidden scroll-smooth snap-x"></div>
+
+            <div class="flex flex-col gap-4">
+                <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="app.handlePhotoTaken(event)">
+                
+                <button onclick="document.getElementById('camera-input').click()" class="w-full py-4 rounded-2xl bg-[var(--bg-color)] theme-text font-black text-lg active:scale-95 transition-transform border-2 theme-border flex items-center justify-center gap-2 shadow-sm">
+                    <i data-lucide="camera" class="w-6 h-6 text-cyan-500"></i> TAKE PHOTO
+                </button>
+
+                <button onclick="app.cancelStop()" class="w-full py-5 rounded-2xl bg-cyan-500 text-white font-black text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(8,145,178,1)] active:shadow-none active:translate-y-[6px]">
+                    RESUME RIDE
+                </button>
+                <button onclick="app.endRide(true)" class="w-full py-5 rounded-2xl bg-amber-500 text-white font-black text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(217,119,6,1)] active:shadow-none active:translate-y-[6px]">
+                    SAVE & FINISH
+                </button>
+                <button onclick="app.endRide(false)" class="w-full py-4 rounded-xl mt-2 text-red-500 font-bold text-sm bg-red-500/10 active:bg-red-500/20 transition-colors border border-red-500/20">
+                    <i data-lucide="trash-2" class="inline w-4 h-4 mr-1 relative -top-[1px]"></i> DELETE RIDE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BADGE SERIES MODAL -->
+    <div id="modal-badge-series" class="fixed inset-0 theme-overlay z-50 hidden flex-col items-center justify-center p-4 backdrop-blur-md overflow-y-auto">
+        <div class="theme-panel theme-border border-2 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl relative my-auto">
+            <button onclick="app.closeBadgeSeries()" class="absolute top-4 right-4 p-2 theme-panel rounded-xl active:scale-90 transition-transform border theme-border shadow-sm z-10">
+                <i data-lucide="x" class="theme-text"></i>
+            </button>
+            <div class="text-center mb-6">
+                <i id="series-modal-icon" data-lucide="zap" class="w-16 h-16 mx-auto mb-2 text-cyan-500"></i>
+                <h3 id="series-modal-title" class="text-3xl font-black theme-text italic uppercase">SERIES</h3>
+                <p id="series-modal-desc" class="theme-muted text-sm font-bold tracking-wide">Category progression</p>
+            </div>
+            <div id="series-modal-list" class="space-y-3">
+                <!-- Levels render here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- RIDE DETAILS MODAL -->
+    <div id="modal-details" class="fixed inset-0 var(--bg-color) z-50 hidden flex-col overflow-y-auto bg-[var(--bg-color)]">
+        <div class="p-4 px-6 flex justify-between items-center theme-border border-b sticky top-0 theme-overlay backdrop-blur z-20">
+            <div>
+                <h3 class="text-2xl font-black theme-text italic" id="detail-date">SUMMARY</h3>
+                <div id="detail-weather" class="text-sm font-bold theme-muted flex items-center gap-1 mt-1 hidden"></div>
+            </div>
+            <button onclick="app.closeDetails()" class="p-2 theme-panel rounded-xl active:scale-90 transition-transform border theme-border shadow-sm">
+                <i data-lucide="x" class="theme-text"></i>
+            </button>
+        </div>
+        
+        <div class="p-4 space-y-6 pb-12 max-w-2xl mx-auto w-full">
+            
+            <div class="theme-panel theme-border border-2 p-2 rounded-[2rem] shadow-lg">
+                <div id="map"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="theme-panel theme-border border-2 shadow-sm p-4 rounded-3xl relative overflow-hidden">
+                    <div class="theme-muted text-xs font-black uppercase tracking-wider mb-1">Distance</div>
+                    <div class="metric-value text-3xl font-black theme-text text-amber-500"><span id="detail-dist"></span> <span class="unit-dist text-sm theme-muted"></span></div>
+                    <i data-lucide="map" class="absolute -bottom-2 -right-2 w-16 h-16 opacity-5 theme-text"></i>
+                </div>
+                <div class="theme-panel theme-border border-2 shadow-sm p-4 rounded-3xl relative overflow-hidden">
+                    <div class="theme-muted text-xs font-black uppercase tracking-wider mb-1">Duration</div>
+                    <div class="metric-value text-3xl font-black theme-text" id="detail-time"></div>
+                    <i data-lucide="clock" class="absolute -bottom-2 -right-2 w-16 h-16 opacity-5 theme-text"></i>
+                </div>
+                <div class="theme-panel theme-border border-2 shadow-sm p-4 rounded-3xl">
+                    <div class="theme-muted text-xs font-black uppercase tracking-wider mb-1">Avg Speed</div>
+                    <div class="metric-value text-2xl font-black theme-text"><span id="detail-avg"></span> <span class="unit-speed text-sm theme-muted"></span></div>
+                </div>
+                <div class="theme-panel theme-border border-2 shadow-sm p-4 rounded-3xl">
+                    <div class="theme-muted text-xs font-black uppercase tracking-wider mb-1">Max Speed</div>
+                    <div class="metric-value text-2xl font-black theme-text"><span id="detail-max"></span> <span class="unit-speed text-sm theme-muted"></span></div>
+                </div>
+                <div class="theme-panel theme-border border-2 shadow-sm p-4 rounded-3xl">
+                    <div class="theme-muted text-xs font-black uppercase tracking-wider mb-1">Climb</div>
+                    <div class="metric-value text-2xl font-black theme-text"><span id="detail-elev"></span> <span class="unit-elev text-sm theme-muted"></span></div>
+                </div>
+                <div class="theme-panel theme-border border-2 shadow-sm p-4 rounded-3xl">
+                    <div class="theme-muted text-xs font-black uppercase tracking-wider mb-1">Power Burn</div>
+                    <div class="metric-value text-2xl font-black text-red-500"><span id="detail-cal"></span> <span class="text-sm theme-muted">kcal</span></div>
+                </div>
+            </div>
+
+            <div class="theme-panel theme-border border-2 shadow-lg p-5 rounded-[2rem]">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="theme-muted text-xs font-black uppercase tracking-wider">Dashboard Graph</h4>
+                    <select id="chart-selector" class="bg-[var(--bg-color)] theme-text font-bold text-sm border theme-border rounded-xl px-3 py-2 pr-8 outline-none focus:border-cyan-500 shadow-sm cursor-pointer">
+                        <option value="speed-time">Speed vs. Time</option>
+                        <option value="elev-time">Elevation vs. Time</option>
+                        <option value="speed-dist">Speed vs. Distance</option>
+                        <option value="elev-dist">Elevation vs. Distance</option>
+                    </select>
+                </div>
+                <div class="h-56 w-full relative">
+                    <canvas id="metricChart"></canvas>
+                </div>
+            </div>
+            
+            <div id="ride-photos-container" class="theme-panel theme-border border-2 shadow-lg p-5 rounded-[2rem] hidden">
+                <h4 class="theme-muted text-xs font-black uppercase tracking-wider mb-4">Ride Photos</h4>
+                <div id="ride-photos-list" class="grid grid-cols-2 gap-3"></div>
+            </div>
+
+            <div id="lap-breakdown-container" class="theme-panel theme-border border-2 shadow-lg p-5 rounded-[2rem] hidden">
+                <h4 class="theme-muted text-xs font-black uppercase tracking-wider mb-4">Lap Breakdown</h4>
+                <div id="lap-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const app = {
+            units: 'imperial', 
+            isSimulating: false,
+            metricsViewMode: 'total', 
+            wakeLock: null,
+            currentRideIdForChart: null,
+            db: null,
+            userSettings: { weight: 160, age: 30 }, 
+
+            isRiding: false,
+            autoPaused: false,
+            pauseTick: 0,
+            resumeTick: 0,
+            totalElapsedMs: 0,
+            lapElapsedMs: 0,
+            timerInterval: null,
+            watchId: null,
+            
+            metrics: {
+                distance: 0, currentSpeed: 0, maxSpeed: 0, elevationGain: 0,
+                pathData: [], path: [], lastPosition: null, lastAltitude: null
+            },
+
+            currentPhotos: [], 
+            currentWeather: null, 
+            isFetchingWeather: false,
+            
+            laps: [],
+            currentLap: { distance: 0, maxSpeed: 0 },
+            history: [],
+            
+            // All-time calculated stats
+            earnedBadgeIds: new Set(),
+            allTimeStats: { rides: 0, maxSpeedMs: 0, maxDistM: 0, maxClimbM: 0, totalDistM: 0 },
+
+            chart: null,
+            leafletMap: null,
+            mapPolyline: null,
+
+            EARTH_RADIUS_M: 6371e3,
+            MS_TO_MPH: 2.23694,
+            MS_TO_KMH: 3.6,
+            M_TO_MILES: 0.000621371,
+            M_TO_KM: 0.001,
+            M_TO_FT: 3.28084,
+            KG_TO_LBS: 2.20462,
+
+            // BADGE DEFINITIONS (Thresholds are stored in Imperial for logic simplicity, converted in UI)
+            BADGE_SERIES: [
+                {
+                    id: 'speed', name: 'Speed Demon', icon: 'zap', color: 'text-amber-500', 
+                    unitLabel: 'mph', unitMult: 1, metricUnitLabel: 'km/h', metricMult: 1.60934,
+                    levels: [
+                        { id: 'spd_1', threshold: 15, name: 'Quick', desc: 'Hit' },
+                        { id: 'spd_2', threshold: 20, name: 'Fast', desc: 'Hit' },
+                        { id: 'spd_3', threshold: 25, name: 'Lightning', desc: 'Hit' },
+                        { id: 'spd_4', threshold: 30, name: 'Supersonic', desc: 'Hit' },
+                        { id: 'spd_5', threshold: 40, name: 'Warp Speed', desc: 'Hit' }
+                    ]
+                },
+                {
+                    id: 'dist', name: 'Endurance', icon: 'route', color: 'text-indigo-500', 
+                    unitLabel: 'miles', unitMult: 1, metricUnitLabel: 'km', metricMult: 1.60934,
+                    levels: [
+                        { id: 'dst_1', threshold: 5, name: 'Cruiser', desc: 'Ride' },
+                        { id: 'dst_2', threshold: 10, name: 'Explorer', desc: 'Ride' },
+                        { id: 'dst_3', threshold: 25, name: 'Marathoner', desc: 'Ride' },
+                        { id: 'dst_4', threshold: 50, name: 'Century Half', desc: 'Ride' },
+                        { id: 'dst_5', threshold: 100, name: 'Iron Rider', desc: 'Ride' }
+                    ]
+                },
+                {
+                    id: 'climb', name: 'Mountaineer', icon: 'mountain', color: 'text-emerald-500', 
+                    unitLabel: 'ft', unitMult: 1, metricUnitLabel: 'm', metricMult: 0.3048,
+                    levels: [
+                        { id: 'clm_1', threshold: 250, name: 'Hill Climber', desc: 'Climb' },
+                        { id: 'clm_2', threshold: 500, name: 'Ridge Rider', desc: 'Climb' },
+                        { id: 'clm_3', threshold: 1000, name: 'Peak Bagger', desc: 'Climb' },
+                        { id: 'clm_4', threshold: 2500, name: 'Alpinist', desc: 'Climb' },
+                        { id: 'clm_5', threshold: 5000, name: 'Everest', desc: 'Climb' }
+                    ]
+                },
+                {
+                    id: 'rides', name: 'Dedication', icon: 'calendar-check', color: 'text-cyan-500', 
+                    unitLabel: 'rides', unitMult: 1, metricUnitLabel: 'rides', metricMult: 1,
+                    levels: [
+                        { id: 'rds_1', threshold: 1, name: 'First Ride', desc: 'Complete' },
+                        { id: 'rds_2', threshold: 5, name: 'Regular', desc: 'Complete' },
+                        { id: 'rds_3', threshold: 25, name: 'Committed', desc: 'Complete' },
+                        { id: 'rds_4', threshold: 50, name: 'Veteran', desc: 'Complete' },
+                        { id: 'rds_5', threshold: 100, name: 'Legend', desc: 'Complete' }
+                    ]
+                }
+            ],
+            SPECIAL_BADGES: [
+                { id: 'early_bird', name: 'Early Bird', icon: 'sunrise', desc: 'Ride between 4AM and 7AM', color: 'text-orange-400' },
+                { id: 'night_rider', name: 'Night Rider', icon: 'moon', desc: 'Ride after 8PM', color: 'text-slate-400' },
+                { id: 'photographer', name: 'Shutterbug', icon: 'camera', desc: 'Take a photo during a ride', color: 'text-pink-500' }
+            ],
+
+            async init() {
+                await this.initDB();
+                this.loadSettings();
+                await this.loadHistoryFromDB();
+                this.recalculateAllStatsAndBadges();
+                this.bindEvents();
+                this.applyTheme();
+                this.updateUnitDisplays();
+                this.renderHistory();
+            },
+
+            initDB() {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open('TurboRiderDB', 2);
+                    req.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if(!db.objectStoreNames.contains('rides')) db.createObjectStore('rides', { keyPath: 'id' });
+                    };
+                    req.onsuccess = e => { this.db = e.target.result; resolve(); };
+                    req.onerror = e => reject(e);
+                });
+            },
+            async saveRideToDB(ride) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction('rides', 'readwrite');
+                    tx.objectStore('rides').put(ride);
+                    tx.oncomplete = resolve;
+                });
+            },
+            async loadHistoryFromDB() {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction('rides', 'readonly');
+                    const req = tx.objectStore('rides').getAll();
+                    req.onsuccess = e => {
+                        this.history = e.target.result.sort((a,b) => b.id - a.id);
+                        resolve();
+                    };
+                });
+            },
+
+            loadSettings() {
+                const saved = localStorage.getItem('turboRiderSettings');
+                if(saved) {
+                    const s = JSON.parse(saved);
+                    this.units = s.units || 'imperial';
+                    this.userSettings.weight = s.weight || 160;
+                    this.userSettings.age = s.age || 30;
+                    document.getElementById('setting-theme').checked = s.theme === 'dark';
+                    document.getElementById('setting-wakelock').checked = s.wakeLock !== false;
+                }
+                
+                document.getElementById('setting-weight').value = this.userSettings.weight;
+                document.getElementById('setting-age').value = this.userSettings.age;
+                
+                if(!document.getElementById('setting-theme').checked) {
+                    document.body.setAttribute('data-theme', 'light');
+                }
+            },
+
+            saveSettings() {
+                const s = {
+                    units: this.units,
+                    weight: parseFloat(document.getElementById('setting-weight').value) || 160,
+                    age: parseInt(document.getElementById('setting-age').value) || 30,
+                    theme: document.body.getAttribute('data-theme'),
+                    wakeLock: document.getElementById('setting-wakelock').checked
+                };
+                this.userSettings.weight = s.weight;
+                this.userSettings.age = s.age;
+                localStorage.setItem('turboRiderSettings', JSON.stringify(s));
+            },
+
+            bindEvents() {
+                const swipeArea = document.getElementById('tappable-metrics-area');
+                let isDragging = false;
+                let startX = 0;
+
+                const handleStart = (clientX) => { startX = clientX; isDragging = false; };
+                const handleMove = () => { isDragging = true; };
+                const handleEnd = (clientX) => {
+                    if (!isDragging) { this.toggleMetricsView(); return; }
+                    const diff = startX - clientX;
+                    if (diff > 40) this.setMetricsView('lap');         
+                    else if (diff < -40) this.setMetricsView('total'); 
+                    else this.toggleMetricsView();                     
+                };
+
+                swipeArea.addEventListener('touchstart', e => handleStart(e.touches[0].clientX), {passive: true});
+                swipeArea.addEventListener('touchmove', handleMove, {passive: true});
+                swipeArea.addEventListener('touchend', e => handleEnd(e.changedTouches[0].clientX));
+                swipeArea.addEventListener('mousedown', e => handleStart(e.clientX));
+                swipeArea.addEventListener('mousemove', handleMove);
+                swipeArea.addEventListener('mouseup', e => handleEnd(e.clientX));
+
+                document.getElementById('setting-theme').addEventListener('change', (e) => {
+                    document.body.setAttribute('data-theme', e.target.checked ? 'dark' : 'light');
+                    this.applyTheme();
+                    this.saveSettings();
+                });
+
+                document.getElementById('setting-wakelock').addEventListener('change', (e) => {
+                    if (e.target.checked && this.isRiding) this.requestWakeLock();
+                    else this.releaseWakeLock();
+                    this.saveSettings();
+                });
+
+                document.getElementById('unit-toggle').addEventListener('click', () => {
+                    this.units = this.units === 'imperial' ? 'metric' : 'imperial';
+                    document.getElementById('unit-toggle').innerText = this.units === 'imperial' ? 'IMPERIAL' : 'METRIC';
+                    this.updateUnitDisplays();
+                    if (this.isRiding) this.updateDashboard();
+                    this.renderHistory(); 
+                    if(document.getElementById('view-trophies').classList.contains('hidden') === false) {
+                        this.renderTrophies();
+                    }
+                    
+                    let w = parseFloat(document.getElementById('setting-weight').value);
+                    if(this.units === 'metric') document.getElementById('setting-weight').value = Math.round(w / this.KG_TO_LBS);
+                    else document.getElementById('setting-weight').value = Math.round(w * this.KG_TO_LBS);
+                    
+                    this.saveSettings();
+                });
+
+                ['setting-weight', 'setting-age'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', () => this.saveSettings());
+                });
+
+                document.getElementById('chart-selector').addEventListener('change', () => {
+                    if (this.currentRideIdForChart) {
+                        const ride = this.history.find(r => r.id === this.currentRideIdForChart);
+                        if (ride) this.renderChart(ride);
+                    }
+                });
+
+                let pressTimer;
+                const stopBtn = document.getElementById('btn-stop');
+                
+                const startPress = (e) => {
+                    if(e.type === 'touchstart') e.preventDefault(); 
+                    stopBtn.classList.add('translate-y-[8px]', 'shadow-none', 'bg-red-700');
+                    pressTimer = window.setTimeout(() => this.confirmStop(), 800); 
+                };
+                
+                const cancelPress = () => {
+                    clearTimeout(pressTimer);
+                    stopBtn.classList.remove('translate-y-[8px]', 'shadow-none', 'bg-red-700');
+                };
+
+                stopBtn.addEventListener('mousedown', startPress);
+                stopBtn.addEventListener('touchstart', startPress, {passive: false});
+                stopBtn.addEventListener('mouseup', cancelPress);
+                stopBtn.addEventListener('mouseleave', cancelPress);
+                stopBtn.addEventListener('touchend', cancelPress);
+            },
+
+            applyTheme() {
+                if(this.chart && !document.getElementById('modal-details').classList.contains('hidden')){
+                    const theme = document.body.getAttribute('data-theme');
+                    const gridColor = theme === 'dark' ? 'rgba(30, 41, 59, 1)' : 'rgba(203, 213, 225, 1)';
+                    const textColor = theme === 'dark' ? '#94a3b8' : '#64748b';
+                    this.chart.options.scales.y.grid.color = gridColor;
+                    this.chart.options.scales.y.ticks.color = textColor;
+                    this.chart.options.scales.x.grid.color = gridColor;
+                    this.chart.options.scales.x.ticks.color = textColor;
+                    this.chart.update();
+                }
+            },
+
+            async requestWakeLock() {
+                if ('wakeLock' in navigator && document.getElementById('setting-wakelock').checked) {
+                    try { this.wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+                }
+            },
+
+            releaseWakeLock() {
+                if (this.wakeLock !== null) {
+                    this.wakeLock.release().then(() => { this.wakeLock = null; });
+                }
+            },
+
+            switchView(view) {
+                if (this.isRiding) return; 
+                
+                ['view-start', 'view-history', 'view-settings', 'view-trophies'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                
+                document.getElementById('nav-ride').className = "flex-1 py-3 flex flex-col items-center gap-1 theme-muted transition-colors";
+                document.getElementById('nav-history').className = "flex-1 py-3 flex flex-col items-center gap-1 theme-muted transition-colors";
+                document.getElementById('nav-trophies').className = "flex-1 py-3 flex flex-col items-center gap-1 theme-muted transition-colors";
+
+                document.getElementById(`view-${view}`).classList.remove('hidden');
+                document.getElementById('main-header').classList.remove('hidden');
+                
+                if (view === 'start' || view === 'settings') {
+                    document.getElementById('nav-ride').className = "flex-1 py-3 flex flex-col items-center gap-1 text-cyan-500 transition-colors";
+                } else if (view === 'history') {
+                    document.getElementById('nav-history').className = "flex-1 py-3 flex flex-col items-center gap-1 text-cyan-500 transition-colors";
+                    this.renderHistory();
+                } else if (view === 'trophies') {
+                    document.getElementById('nav-trophies').className = "flex-1 py-3 flex flex-col items-center gap-1 text-cyan-500 transition-colors";
+                    this.renderTrophies();
+                }
+            },
+
+            startRide(simulate = false) {
+                this.isSimulating = simulate;
+                this.isRiding = true;
+                
+                this.autoPaused = false;
+                this.pauseTick = 0;
+                this.resumeTick = 0;
+                this.totalElapsedMs = 0;
+                this.lapElapsedMs = 0;
+                
+                this.requestWakeLock();
+                
+                this.metrics = { distance: 0, currentSpeed: 0, maxSpeed: 0, elevationGain: 0, pathData: [], path: [], lastPosition: null, lastAltitude: null };
+                this.laps = [];
+                this.currentPhotos = [];
+                this.currentWeather = null;
+                this.isFetchingWeather = false;
+                this.renderPauseMenuPhotos();
+                this.currentLap = { distance: 0, maxSpeed: 0 };
+                this.setMetricsView('total');
+                
+                document.getElementById('auto-pause-indicator').classList.add('hidden');
+
+                ['view-start', 'view-history', 'view-settings', 'view-trophies', 'bottom-nav', 'main-header'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                document.getElementById('view-ride').classList.remove('hidden');
+                document.getElementById('view-ride').style.display = 'flex';
+
+                this.timerInterval = setInterval(() => this.processTimers(), 1000);
+                this.updateDashboard();
+
+                if (simulate) {
+                    this.runSimulator();
+                    document.getElementById('gps-status').innerHTML = `<div class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div> SIMULATOR`;
+                    document.getElementById('gps-status').classList.replace('text-cyan-500', 'text-amber-500');
+                    document.getElementById('gps-status').classList.replace('bg-cyan-500/10', 'bg-amber-500/10');
+                } else {
+                    this.startGPS();
+                    document.getElementById('gps-status').innerHTML = `<div class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></div> SEARCHING GPS`;
+                    document.getElementById('gps-status').classList.replace('text-amber-500', 'text-cyan-500');
+                    document.getElementById('gps-status').classList.replace('bg-amber-500/10', 'bg-cyan-500/10');
+                }
+            },
+
+            processTimers() {
+                if (!this.isRiding) return;
+                const currentMph = this.metrics.currentSpeed * this.MS_TO_MPH;
+
+                if (!this.autoPaused) {
+                    this.totalElapsedMs += 1000;
+                    this.lapElapsedMs += 1000;
+
+                    if (currentMph < 0.5) {
+                        this.pauseTick++;
+                        if (this.pauseTick >= 3) {
+                            this.autoPaused = true;
+                            this.pauseTick = 0;
+                            document.getElementById('auto-pause-indicator').classList.remove('hidden');
+                        }
+                    } else {
+                        this.pauseTick = 0;
+                    }
+                } else {
+                    if (currentMph >= 3.0) {
+                        this.resumeTick++;
+                        if (this.resumeTick >= 3) {
+                            this.autoPaused = false;
+                            this.resumeTick = 0;
+                            document.getElementById('auto-pause-indicator').classList.add('hidden');
+                        }
+                    } else {
+                        this.resumeTick = 0;
+                    }
+                }
+
+                const displayMs = this.metricsViewMode === 'total' ? this.totalElapsedMs : this.lapElapsedMs;
+                document.getElementById('ride-timer').innerText = this.formatDuration(displayMs);
+            },
+
+            startGPS() {
+                if (!navigator.geolocation) return;
+                this.watchId = navigator.geolocation.watchPosition(
+                    (pos) => this.handlePosition(pos),
+                    (err) => { document.getElementById('gps-status').innerHTML = `<div class="w-2 h-2 rounded-full bg-red-500"></div> NO SIGNAL`; },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            },
+
+            handlePosition(position) {
+                document.getElementById('gps-status').innerHTML = `<div class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></div> GPS ACTIVE`;
+                
+                const { latitude, longitude, speed, altitude, accuracy } = position.coords;
+                const timestamp = position.timestamp;
+
+                if (accuracy > 30) return; 
+
+                if (!this.currentWeather && !this.isFetchingWeather) {
+                    this.isFetchingWeather = true;
+                    this.fetchWeather(latitude, longitude);
+                }
+
+                const currentPos = { lat: latitude, lon: longitude, time: timestamp };
+                let calculatedSpeed = speed || 0; 
+                let currentAltitude = altitude || (this.metrics.lastAltitude || 0);
+
+                if (this.metrics.lastPosition) {
+                    const dist = this.calculateDistance(this.metrics.lastPosition, currentPos);
+                    const timeDiff = (timestamp - this.metrics.lastPosition.time) / 1000; 
+                    if (timeDiff > 0 && speed === null) calculatedSpeed = dist / timeDiff;
+                    
+                    if (!this.autoPaused) {
+                        this.metrics.distance += dist;
+                        this.currentLap.distance += dist;
+                    }
+                }
+
+                this.metrics.path.push([latitude, longitude]);
+
+                if (altitude !== null) {
+                    if (this.metrics.lastAltitude !== null && altitude > this.metrics.lastAltitude && !this.autoPaused) {
+                        this.metrics.elevationGain += (altitude - this.metrics.lastAltitude);
+                    }
+                    this.metrics.lastAltitude = altitude;
+                }
+
+                if(calculatedSpeed < 0) calculatedSpeed = 0; 
+                this.metrics.currentSpeed = calculatedSpeed;
+                
+                if (calculatedSpeed > this.metrics.maxSpeed) this.metrics.maxSpeed = calculatedSpeed;
+                if (calculatedSpeed > this.currentLap.maxSpeed) this.currentLap.maxSpeed = calculatedSpeed;
+
+                if (!this.autoPaused) {
+                    this.metrics.pathData.push({ 
+                        t: this.totalElapsedMs, 
+                        s: calculatedSpeed,
+                        d: this.metrics.distance,
+                        e: currentAltitude
+                    });
+                }
+
+                this.metrics.lastPosition = currentPos;
+                this.updateDashboard();
+            },
+
+            calculateDistance(pos1, pos2) {
+                const φ1 = pos1.lat * Math.PI/180, φ2 = pos2.lat * Math.PI/180;
+                const Δφ = (pos2.lat - pos1.lat) * Math.PI/180, Δλ = (pos2.lon - pos1.lon) * Math.PI/180;
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                return this.EARTH_RADIUS_M * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+            },
+
+            async fetchWeather(lat, lon) {
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                    const data = await res.json();
+                    if (data && data.current_weather) {
+                        this.currentWeather = {
+                            tempC: data.current_weather.temperature,
+                            code: data.current_weather.weathercode
+                        };
+                    }
+                } catch (e) { console.error("Failed to fetch weather"); }
+            },
+
+            getFormattedWeather(weatherObj) {
+                if (!weatherObj) return null;
+                const c = weatherObj.code;
+                let text = 'Unknown', icon = 'cloud';
+                if (c === 0) { text = 'Clear'; icon = 'sun'; }
+                else if (c === 1 || c === 2 || c === 3) { text = 'Cloudy'; icon = 'cloud'; }
+                else if (c >= 45 && c <= 48) { text = 'Fog'; icon = 'cloud-fog'; }
+                else if (c >= 51 && c <= 67) { text = 'Rain'; icon = 'cloud-rain'; }
+                else if (c >= 71 && c <= 77) { text = 'Snow'; icon = 'snowflake'; }
+                else if (c >= 80 && c <= 82) { text = 'Showers'; icon = 'cloud-rain'; }
+                else if (c >= 95 && c <= 99) { text = 'Storm'; icon = 'cloud-lightning'; }
+
+                let temp = weatherObj.tempC;
+                let unit = '°C';
+                if (this.units === 'imperial') {
+                    temp = (temp * 9/5) + 32;
+                    unit = '°F';
+                }
+                return { text, icon, temp: Math.round(temp), unit };
+            },
+
+            simInterval: null,
+            runSimulator() {
+                let currentSimSpeed = 6; 
+                let lat = 40.7829, lon = -73.9654; 
+                let heading = 0;
+                let alt = 50;
+
+                this.simInterval = setInterval(() => {
+                    if (!this.isRiding) return clearInterval(this.simInterval);
+
+                    if (Math.random() > 0.95 && currentSimSpeed > 0) currentSimSpeed = 0;
+                    else if (currentSimSpeed === 0 && Math.random() > 0.8) currentSimSpeed = 5;
+
+                    if (currentSimSpeed > 0) {
+                        currentSimSpeed += (Math.random() - 0.5) * 1.5;
+                        if (currentSimSpeed < 3) currentSimSpeed = 3;
+                        if (currentSimSpeed > 14) currentSimSpeed -= 1;
+                        heading += (Math.random() - 0.5) * 0.2; 
+                        lat += (currentSimSpeed * Math.cos(heading)) * 0.000009;
+                        lon += (currentSimSpeed * Math.sin(heading)) * 0.000009;
+                        alt += (Math.random() > 0.4) ? (Math.random() * 2 - 0.5) : 0; 
+                    }
+
+                    this.handlePosition({
+                        coords: { latitude: lat, longitude: lon, speed: currentSimSpeed, altitude: alt, accuracy: 5 },
+                        timestamp: Date.now()
+                    });
+                }, 1000);
+            },
+
+            toggleMetricsView() {
+                this.setMetricsView(this.metricsViewMode === 'total' ? 'lap' : 'total');
+            },
+
+            setMetricsView(mode) {
+                this.metricsViewMode = mode;
+                const tTab = document.getElementById('tab-total');
+                const lTab = document.getElementById('tab-lap');
+                
+                if(mode === 'total') {
+                    tTab.className = "px-6 py-2 rounded-full text-sm font-black bg-cyan-500 text-white transition-colors tracking-wide w-28 text-center shadow-sm";
+                    lTab.className = "px-6 py-2 rounded-full text-sm font-black theme-muted transition-colors tracking-wide w-28 text-center";
+                } else {
+                    lTab.className = "px-6 py-2 rounded-full text-sm font-black bg-cyan-500 text-white transition-colors tracking-wide w-28 text-center shadow-sm";
+                    tTab.className = "px-6 py-2 rounded-full text-sm font-black theme-muted transition-colors tracking-wide w-28 text-center";
+                }
+                this.updateDashboard();
+                const displayMs = this.metricsViewMode === 'total' ? this.totalElapsedMs : this.lapElapsedMs;
+                document.getElementById('ride-timer').innerText = this.formatDuration(displayMs);
+            },
+
+            markLap() {
+                if(!this.isRiding) return;
+                
+                this.laps.push({
+                    lapNum: this.laps.length + 1,
+                    timeMs: this.lapElapsedMs,
+                    distanceM: this.currentLap.distance,
+                    maxSpeedMs: this.currentLap.maxSpeed,
+                    avgSpeedMs: (this.lapElapsedMs > 0) ? (this.currentLap.distance / (this.lapElapsedMs/1000)) : 0
+                });
+
+                this.currentLap = { distance: 0, maxSpeed: 0 };
+                this.lapElapsedMs = 0;
+                
+                const counter = document.getElementById('lap-counter');
+                counter.innerText = `(${this.laps.length + 1})`;
+                this.setMetricsView('lap'); 
+            },
+
+            updateDashboard() {
+                const speedMult = this.units === 'imperial' ? this.MS_TO_MPH : this.MS_TO_KMH;
+                const distMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
+
+                document.getElementById('current-speed').innerText = (this.metrics.currentSpeed * speedMult).toFixed(1);
+                
+                const distance = this.metricsViewMode === 'total' ? this.metrics.distance : this.currentLap.distance;
+                document.getElementById('current-distance').innerText = (distance * distMult).toFixed(2);
+                
+                const timeMs = this.metricsViewMode === 'total' ? this.totalElapsedMs : this.lapElapsedMs;
+                let avgSpeed = 0;
+                if (timeMs > 0) avgSpeed = (distance / (timeMs/1000)) * speedMult;
+                document.getElementById('avg-speed').innerText = avgSpeed.toFixed(1);
+            },
+
+            updateUnitDisplays() {
+                const speedUnit = this.units === 'imperial' ? 'mph' : 'km/h';
+                const distUnit = this.units === 'imperial' ? 'mi' : 'km';
+                const elevUnit = this.units === 'imperial' ? 'ft' : 'm';
+                const weightUnit = this.units === 'imperial' ? 'lbs' : 'kg';
+                
+                document.getElementById('speed-unit-display').innerText = speedUnit;
+                document.getElementById('unit-toggle').innerText = this.units === 'imperial' ? 'IMPERIAL' : 'METRIC';
+                document.getElementById('label-weight-unit').innerText = weightUnit;
+                
+                document.querySelectorAll('.unit-speed').forEach(el => el.innerText = speedUnit);
+                document.querySelectorAll('.unit-dist').forEach(el => el.innerText = distUnit);
+                document.querySelectorAll('.unit-elev').forEach(el => el.innerText = elevUnit);
+            },
+
+            confirmStop() {
+                document.getElementById('modal-stop').classList.remove('hidden');
+                document.getElementById('modal-stop').classList.add('flex');
+            },
+
+            handlePhotoTaken(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 600; 
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
+                        this.currentPhotos.push(dataUrl);
+                        this.renderPauseMenuPhotos();
+                        
+                        document.getElementById('camera-input').value = ''; 
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            },
+
+            renderPauseMenuPhotos() {
+                const container = document.getElementById('pause-photo-gallery');
+                if (this.currentPhotos.length === 0) {
+                    container.classList.add('hidden');
+                    return;
+                }
+                container.classList.remove('hidden');
+                container.innerHTML = '';
+
+                this.currentPhotos.forEach((photoUrl, index) => {
+                    const div = document.createElement('div');
+                    div.className = "relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border-2 theme-border snap-center";
+                    div.innerHTML = `
+                        <img src="${photoUrl}" class="w-full h-full object-cover">
+                        <button onclick="app.removePhoto(${index})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1.5 shadow-md active:scale-90">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+                lucide.createIcons();
+            },
+
+            removePhoto(index) {
+                this.currentPhotos.splice(index, 1);
+                this.renderPauseMenuPhotos();
+            },
+
+            cancelStop() {
+                document.getElementById('modal-stop').classList.add('hidden');
+                document.getElementById('modal-stop').classList.remove('flex');
+            },
+
+            async endRide(save) {
+                this.cancelStop();
+                this.isRiding = false;
+                this.releaseWakeLock();
+                
+                clearInterval(this.timerInterval);
+                if (this.isSimulating) clearInterval(this.simInterval);
+                else if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
+
+                if(this.currentLap.distance > 0) this.markLap();
+
+                if (save) {
+                    const avgSpd = this.totalElapsedMs > 0 ? (this.metrics.distance / (this.totalElapsedMs/1000)) : 0;
+                    
+                    let weightKg = this.units === 'imperial' ? (this.userSettings.weight / this.KG_TO_LBS) : this.userSettings.weight;
+                    let mph = avgSpd * this.MS_TO_MPH;
+                    let met = 4; 
+                    if(mph >= 16) met = 12; 
+                    else if(mph >= 14) met = 10; 
+                    else if(mph >= 12) met = 8; 
+                    else if(mph >= 10) met = 6; 
+                    
+                    let durationMins = this.totalElapsedMs / 60000;
+                    let calories = (met * 3.5 * weightKg / 200) * durationMins;
+
+                    const rideData = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        durationMs: this.totalElapsedMs,
+                        distanceM: this.metrics.distance,
+                        maxSpeedMs: this.metrics.maxSpeed,
+                        avgSpeedMs: avgSpd,
+                        elevationGainM: this.metrics.elevationGain,
+                        calories: calories,
+                        weather: this.currentWeather,
+                        pathData: [...this.metrics.pathData],
+                        path: [...this.metrics.path],
+                        laps: [...this.laps],
+                        photos: [...this.currentPhotos]
+                    };
+                    
+                    if (this.totalElapsedMs > 5000 || this.isSimulating) {
+                        this.history.unshift(rideData);
+                        await this.saveRideToDB(rideData);
+                        this.recalculateAllStatsAndBadges();
+                    }
+                }
+
+                document.getElementById('view-ride').style.display = 'none';
+                document.querySelector('header').classList.remove('hidden');
+                document.getElementById('bottom-nav').classList.remove('hidden');
+                
+                this.switchView('history');
+            },
+
+            // --- ALL-TIME STATS & BADGE LOGIC ---
+            recalculateAllStatsAndBadges() {
+                let maxSpeedMs = 0;
+                let maxDistM = 0;
+                let maxClimbM = 0;
+                let totalDistM = 0;
+                
+                this.history.forEach(r => {
+                    if (r.maxSpeedMs > maxSpeedMs) maxSpeedMs = r.maxSpeedMs;
+                    if (r.distanceM > maxDistM) maxDistM = r.distanceM;
+                    if (r.elevationGainM > maxClimbM) maxClimbM = r.elevationGainM;
+                    totalDistM += r.distanceM;
+                });
+
+                this.allTimeStats = {
+                    rides: this.history.length,
+                    maxSpeedMs,
+                    maxDistM,
+                    maxClimbM,
+                    totalDistM
+                };
+
+                const mph = maxSpeedMs * this.MS_TO_MPH;
+                const distMi = maxDistM * this.M_TO_MILES;
+                const climbFt = maxClimbM * this.M_TO_FT;
+                const rides = this.history.length;
+
+                this.earnedBadgeIds = new Set();
+                
+                // Assign Series Badges based on all-time maxes
+                this.BADGE_SERIES.find(s => s.id === 'speed').levels.forEach(l => { if (mph >= l.threshold) this.earnedBadgeIds.add(l.id); });
+                this.BADGE_SERIES.find(s => s.id === 'dist').levels.forEach(l => { if (distMi >= l.threshold) this.earnedBadgeIds.add(l.id); });
+                this.BADGE_SERIES.find(s => s.id === 'climb').levels.forEach(l => { if (climbFt >= l.threshold) this.earnedBadgeIds.add(l.id); });
+                this.BADGE_SERIES.find(s => s.id === 'rides').levels.forEach(l => { if (rides >= l.threshold) this.earnedBadgeIds.add(l.id); });
+                
+                // Scan rides for special achievements
+                this.history.forEach(r => {
+                    const hour = new Date(r.date).getHours();
+                    if (hour >= 20 || hour <= 4) this.earnedBadgeIds.add('night_rider');
+                    if (hour >= 4 && hour < 7) this.earnedBadgeIds.add('early_bird');
+                    if (r.photos && r.photos.length > 0) this.earnedBadgeIds.add('photographer');
+                });
+            },
+
+            renderTrophies() {
+                // Render Top Stats
+                const sMult = this.units === 'imperial' ? this.MS_TO_MPH : this.MS_TO_KMH;
+                const dMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
+                const eMult = this.units === 'imperial' ? this.M_TO_FT : 1;
+
+                document.getElementById('stat-total-rides').innerText = this.allTimeStats.rides;
+                document.getElementById('stat-max-speed').innerText = (this.allTimeStats.maxSpeedMs * sMult).toFixed(1);
+                document.getElementById('stat-total-dist').innerText = (this.allTimeStats.totalDistM * dMult).toFixed(1);
+                document.getElementById('stat-max-climb').innerText = Math.round(this.allTimeStats.maxClimbM * eMult);
+
+                // Render Series Badges (Highest level earned, or Level 1 locked)
+                const list = document.getElementById('trophy-list');
+                list.innerHTML = '';
+                
+                this.BADGE_SERIES.forEach(series => {
+                    let highestEarnedLevel = null;
+                    series.levels.forEach(l => { if (this.earnedBadgeIds.has(l.id)) highestEarnedLevel = l; });
+                    
+                    const displayLevel = highestEarnedLevel || series.levels[0];
+                    const isEarned = highestEarnedLevel !== null;
+                    const val = this.units === 'imperial' ? displayLevel.threshold : Math.round(displayLevel.threshold * series.metricMult);
+                    const label = this.units === 'imperial' ? series.unitLabel : series.metricUnitLabel;
+                    
+                    const card = document.createElement('div');
+                    card.className = `theme-panel border-2 theme-border rounded-[2rem] p-5 flex flex-col items-center justify-center text-center shadow-md relative overflow-hidden transition-transform hover:scale-105 cursor-pointer ${isEarned ? `border-${series.color.split('-')[1]}-500/30 bg-${series.color.split('-')[1]}-500/5` : 'opacity-60 grayscale'}`;
+                    card.onclick = () => this.openBadgeSeries(series.id);
+                    
+                    card.innerHTML = `
+                        ${!isEarned ? `<i data-lucide="lock" class="w-4 h-4 theme-muted absolute top-4 right-4 opacity-50"></i>` : `<div class="absolute top-0 right-0 ${series.color.replace('text-', 'bg-')} text-white text-[9px] font-black px-2 py-1 rounded-bl-xl tracking-wider">UNLOCKED</div>`}
+                        <i data-lucide="${series.icon}" class="w-12 h-12 ${isEarned ? series.color : 'theme-muted'} mb-3 drop-shadow-sm"></i>
+                        <div class="font-black theme-text text-sm uppercase tracking-wider leading-tight">${displayLevel.name}</div>
+                        <div class="text-[10px] theme-muted font-bold mt-1 leading-tight">${displayLevel.desc} ${val} ${label}</div>
+                    `;
+                    list.appendChild(card);
+                });
+
+                // Render Special Badges
+                const specList = document.getElementById('special-trophy-list');
+                specList.innerHTML = '';
+                
+                this.SPECIAL_BADGES.forEach(sb => {
+                    const isEarned = this.earnedBadgeIds.has(sb.id);
+                    const card = document.createElement('div');
+                    card.className = `theme-panel border-2 theme-border rounded-[2rem] p-5 flex flex-col items-center justify-center text-center shadow-md relative overflow-hidden transition-transform hover:scale-105 ${isEarned ? `border-${sb.color.split('-')[1]}-500/30 bg-${sb.color.split('-')[1]}-500/5` : 'opacity-60 grayscale'}`;
+                    
+                    card.innerHTML = `
+                        ${!isEarned ? `<i data-lucide="lock" class="w-4 h-4 theme-muted absolute top-4 right-4 opacity-50"></i>` : `<div class="absolute top-0 right-0 ${sb.color.replace('text-', 'bg-')} text-white text-[9px] font-black px-2 py-1 rounded-bl-xl tracking-wider">EARNED</div>`}
+                        <i data-lucide="${sb.icon}" class="w-12 h-12 ${isEarned ? sb.color : 'theme-muted'} mb-3 drop-shadow-sm"></i>
+                        <div class="font-black theme-text text-sm uppercase tracking-wider leading-tight">${sb.name}</div>
+                        <div class="text-[10px] theme-muted font-bold mt-1 leading-tight">${sb.desc}</div>
+                    `;
+                    specList.appendChild(card);
+                });
+
+                lucide.createIcons();
+            },
+
+            openBadgeSeries(seriesId) {
+                const series = this.BADGE_SERIES.find(s => s.id === seriesId);
+                if(!series) return;
+
+                document.getElementById('series-modal-icon').setAttribute('data-lucide', series.icon);
+                document.getElementById('series-modal-icon').className = `w-16 h-16 mx-auto mb-2 ${series.color}`;
+                document.getElementById('series-modal-title').innerText = series.name;
+                
+                const list = document.getElementById('series-modal-list');
+                list.innerHTML = '';
+
+                series.levels.forEach((l, index) => {
+                    const isEarned = this.earnedBadgeIds.has(l.id);
+                    const val = this.units === 'imperial' ? l.threshold : Math.round(l.threshold * series.metricMult);
+                    const label = this.units === 'imperial' ? series.unitLabel : series.metricUnitLabel;
+                    
+                    list.innerHTML += `
+                        <div class="theme-panel border-2 theme-border rounded-2xl p-4 flex items-center gap-4 ${isEarned ? `border-${series.color.split('-')[1]}-500/30 bg-${series.color.split('-')[1]}-500/5` : 'opacity-50 grayscale'}">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-xl ${isEarned ? `bg-${series.color.split('-')[1]}-500 text-white` : 'bg-slate-300 dark:bg-slate-700 theme-text'} shrink-0">${index + 1}</div>
+                            <div class="flex-1">
+                                <div class="font-black theme-text text-lg uppercase tracking-wider">${l.name}</div>
+                                <div class="text-xs theme-muted font-bold">${l.desc} ${val} ${label}</div>
+                            </div>
+                            ${!isEarned ? `<i data-lucide="lock" class="w-5 h-5 theme-muted shrink-0"></i>` : `<i data-lucide="check-circle-2" class="w-6 h-6 ${series.color} shrink-0"></i>`}
+                        </div>
+                    `;
+                });
+
+                lucide.createIcons();
+                document.getElementById('modal-badge-series').classList.remove('hidden');
+                document.getElementById('modal-badge-series').classList.add('flex');
+            },
+
+            closeBadgeSeries() {
+                document.getElementById('modal-badge-series').classList.add('hidden');
+                document.getElementById('modal-badge-series').classList.remove('flex');
+            },
+
+            // --- CSV Export ---
+            exportCSV() {
+                if(this.history.length === 0) return alert("No rides to export!");
+                
+                let csv = "Date,Duration,Distance(mi),Avg Speed(mph),Max Speed(mph),Elevation(ft),Calories\n";
+                this.history.forEach(r => {
+                    const d = new Date(r.date).toLocaleDateString();
+                    const dur = this.formatDuration(r.durationMs);
+                    const dist = (r.distanceM * this.M_TO_MILES).toFixed(2);
+                    const avg = (r.avgSpeedMs * this.MS_TO_MPH).toFixed(1);
+                    const max = (r.maxSpeedMs * this.MS_TO_MPH).toFixed(1);
+                    const elev = Math.round(r.elevationGainM * this.M_TO_FT);
+                    const cal = Math.round(r.calories || 0);
+                    csv += `${d},${dur},${dist},${avg},${max},${elev},${cal}\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'TurboRider_Stats.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            },
+
+            renderHistory() {
+                const listEl = document.getElementById('history-list');
+                const emptyEl = document.getElementById('empty-history');
+                listEl.innerHTML = '';
+
+                if (this.history.length === 0) return emptyEl.classList.remove('hidden');
+                emptyEl.classList.add('hidden');
+                
+                const distMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
+                const distUnit = this.units === 'imperial' ? 'mi' : 'km';
+
+                this.history.forEach(ride => {
+                    const d = new Date(ride.date);
+                    const card = document.createElement('div');
+                    card.className = "theme-panel theme-border border-2 p-5 rounded-3xl flex justify-between items-center cursor-pointer transition-transform shadow-sm hover:-translate-y-1 hover:border-cyan-500/50";
+                    card.onclick = () => this.showRideDetails(ride.id);
+                    
+                    const wInfo = ride.weather ? this.getFormattedWeather(ride.weather) : null;
+                    const weatherHtml = wInfo ? `<span class="opacity-50 mx-1">•</span><i data-lucide="${wInfo.icon}" class="w-3.5 h-3.5"></i> ${wInfo.temp}${wInfo.unit}` : '';
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="font-black text-xl theme-text italic tracking-wide">${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</div>
+                            <div class="text-sm font-bold theme-muted flex items-center gap-1 mt-0.5">
+                                ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                                ${weatherHtml}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-black text-2xl text-cyan-500 metric-value">${(ride.distanceM * distMult).toFixed(2)} <span class="text-xs font-bold theme-muted">${distUnit}</span></div>
+                            <div class="text-sm font-bold theme-text metric-value">${this.formatDuration(ride.durationMs, false)}</div>
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
+                lucide.createIcons();
+            },
+
+            showRideDetails(id) {
+                const ride = this.history.find(r => r.id === id);
+                if (!ride) return;
+                
+                this.currentRideIdForChart = id;
+
+                const sMult = this.units === 'imperial' ? this.MS_TO_MPH : this.MS_TO_KMH;
+                const dMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
+                const eMult = this.units === 'imperial' ? this.M_TO_FT : 1;
+
+                document.getElementById('detail-date').innerText = new Date(ride.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+                
+                const weatherEl = document.getElementById('detail-weather');
+                if (ride.weather) {
+                    const wInfo = this.getFormattedWeather(ride.weather);
+                    weatherEl.innerHTML = `<i data-lucide="${wInfo.icon}" class="w-4 h-4 text-cyan-500"></i> ${wInfo.temp}${wInfo.unit} · ${wInfo.text}`;
+                    weatherEl.classList.remove('hidden');
+                } else {
+                    weatherEl.classList.add('hidden');
+                }
+
+                document.getElementById('detail-dist').innerText = (ride.distanceM * dMult).toFixed(2);
+                document.getElementById('detail-time').innerText = this.formatDuration(ride.durationMs);
+                document.getElementById('detail-avg').innerText = (ride.avgSpeedMs * sMult).toFixed(1);
+                document.getElementById('detail-max').innerText = (ride.maxSpeedMs * sMult).toFixed(1);
+                document.getElementById('detail-elev').innerText = Math.round(ride.elevationGainM * eMult);
+                document.getElementById('detail-cal').innerText = Math.round(ride.calories || 0);
+
+                document.getElementById('chart-selector').value = 'speed-time';
+
+                this.updateUnitDisplays(); 
+                document.getElementById('modal-details').classList.remove('hidden');
+                document.getElementById('modal-details').classList.add('flex');
+
+                lucide.createIcons();
+                this.renderChart(ride);
+                this.renderMap(ride.path);
+                this.renderPhotos(ride);
+                this.renderLaps(ride);
+            },
+
+            downloadPhoto(url) {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `TurboRider_Photo_${Date.now()}.jpg`;
+                a.click();
+            },
+
+            renderPhotos(ride) {
+                const container = document.getElementById('ride-photos-container');
+                const list = document.getElementById('ride-photos-list');
+                
+                if (!ride.photos || ride.photos.length === 0) {
+                    container.classList.add('hidden');
+                    return;
+                }
+                
+                container.classList.remove('hidden');
+                list.innerHTML = '';
+                
+                ride.photos.forEach(photoUrl => {
+                    const img = document.createElement('img');
+                    img.src = photoUrl;
+                    img.className = "w-full h-32 sm:h-48 object-cover rounded-2xl border-2 theme-border shadow-sm";
+                    
+                    const btn = document.createElement('button');
+                    btn.className = "absolute bottom-3 right-3 bg-slate-900/70 p-2 rounded-full text-white backdrop-blur active:scale-90 transition-transform shadow-lg";
+                    btn.innerHTML = `<i data-lucide="download" class="w-5 h-5"></i>`;
+                    btn.onclick = () => this.downloadPhoto(photoUrl);
+                    
+                    const div = document.createElement('div');
+                    div.className = "relative";
+                    div.appendChild(img);
+                    div.appendChild(btn);
+                    list.appendChild(div);
+                });
+                lucide.createIcons();
+            },
+
+            closeDetails() {
+                this.currentRideIdForChart = null;
+                document.getElementById('modal-details').classList.add('hidden');
+                document.getElementById('modal-details').classList.remove('flex');
+            },
+
+            renderChart(ride) {
+                const ctx = document.getElementById('metricChart').getContext('2d');
+                if (this.chart) this.chart.destroy();
+
+                const chartType = document.getElementById('chart-selector').value;
+                const sMult = this.units === 'imperial' ? this.MS_TO_MPH : this.MS_TO_KMH;
+                const dMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
+                const eMult = this.units === 'imperial' ? this.M_TO_FT : 1;
+                
+                let dataPoints = ride.pathData || [];
+                
+                if (dataPoints.length > 150) {
+                    const step = Math.ceil(dataPoints.length / 150);
+                    dataPoints = dataPoints.filter((_, i) => i % step === 0);
+                }
+
+                let labels = [];
+                let datasetData = [];
+                let yLabel = '';
+                let lineColor = '#06b6d4'; 
+                let bgColor = 'rgba(6, 182, 212, 0.1)';
+
+                if (chartType === 'speed-time') {
+                    yLabel = `Speed (${this.units === 'imperial' ? 'mph' : 'km/h'})`;
+                    labels = dataPoints.map(dp => {
+                        const m = Math.floor(dp.t / 60000);
+                        const s = Math.floor((dp.t % 60000) / 1000);
+                        return `${m}:${s.toString().padStart(2, '0')}`;
+                    });
+                    datasetData = dataPoints.map(dp => (dp.s * sMult).toFixed(1));
+                } 
+                else if (chartType === 'elev-time') {
+                    yLabel = `Elevation (${this.units === 'imperial' ? 'ft' : 'm'})`;
+                    lineColor = '#f59e0b'; 
+                    bgColor = 'rgba(245, 158, 11, 0.1)';
+                    labels = dataPoints.map(dp => {
+                        const m = Math.floor(dp.t / 60000);
+                        const s = Math.floor((dp.t % 60000) / 1000);
+                        return `${m}:${s.toString().padStart(2, '0')}`;
+                    });
+                    datasetData = dataPoints.map(dp => (dp.e * eMult).toFixed(0));
+                }
+                else if (chartType === 'speed-dist') {
+                    yLabel = `Speed (${this.units === 'imperial' ? 'mph' : 'km/h'})`;
+                    const distUnit = this.units === 'imperial' ? 'mi' : 'km';
+                    labels = dataPoints.map(dp => `${(dp.d * dMult).toFixed(2)}${distUnit}`);
+                    datasetData = dataPoints.map(dp => (dp.s * sMult).toFixed(1));
+                }
+                else if (chartType === 'elev-dist') {
+                    yLabel = `Elevation (${this.units === 'imperial' ? 'ft' : 'm'})`;
+                    lineColor = '#f59e0b';
+                    bgColor = 'rgba(245, 158, 11, 0.1)';
+                    const distUnit = this.units === 'imperial' ? 'mi' : 'km';
+                    labels = dataPoints.map(dp => `${(dp.d * dMult).toFixed(2)}${distUnit}`);
+                    datasetData = dataPoints.map(dp => (dp.e * eMult).toFixed(0));
+                }
+
+                const theme = document.body.getAttribute('data-theme');
+                const gridColor = theme === 'dark' ? 'rgba(30, 41, 59, 1)' : 'rgba(203, 213, 225, 1)';
+                const textColor = theme === 'dark' ? '#94a3b8' : '#64748b';
+
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: yLabel,
+                            data: datasetData,
+                            borderColor: lineColor, 
+                            backgroundColor: bgColor,
+                            borderWidth: 3, 
+                            pointRadius: 0, 
+                            pointHitRadius: 15, 
+                            fill: true, 
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: { display: false },
+                                ticks: { color: textColor, maxTicksLimit: 6, font: {family: 'Outfit', weight: 'bold'} }
+                            },
+                            y: {
+                                beginAtZero: chartType.startsWith('speed'), 
+                                grid: { color: gridColor },
+                                ticks: { color: textColor, font: {family: 'Roboto Mono', weight: 'bold'} }
+                            }
+                        },
+                        interaction: { mode: 'index', intersect: false }
+                    }
+                });
+            },
+
+            renderMap(path) {
+                if (!this.leafletMap) {
+                    this.leafletMap = L.map('map', { zoomControl: false, dragging: !L.Browser.mobile, tap: !L.Browser.mobile });
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; OpenStreetMap'
+                    }).addTo(this.leafletMap);
+                }
+                
+                setTimeout(() => {
+                    this.leafletMap.invalidateSize();
+                    if (this.mapPolyline) this.leafletMap.removeLayer(this.mapPolyline);
+                    
+                    if (path && path.length > 0) {
+                        this.mapPolyline = L.polyline(path, { color: '#06b6d4', weight: 5, opacity: 0.9 }).addTo(this.leafletMap);
+                        this.leafletMap.fitBounds(this.mapPolyline.getBounds(), { padding: [30, 30] });
+                    } else {
+                        this.leafletMap.setView([40.7128, -74.0060], 13);
+                    }
+                }, 200);
+            },
+
+            renderLaps(ride) {
+                const container = document.getElementById('lap-breakdown-container');
+                const list = document.getElementById('lap-list');
+                list.innerHTML = '';
+
+                if(!ride.laps || ride.laps.length <= 1) {
+                    container.classList.add('hidden');
+                    return;
+                }
+                container.classList.remove('hidden');
+
+                const dMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
+                const sMult = this.units === 'imperial' ? this.MS_TO_MPH : this.MS_TO_KMH;
+                const uDist = this.units === 'imperial' ? 'mi' : 'km';
+                const uSpd = this.units === 'imperial' ? 'mph' : 'km/h';
+
+                ride.laps.forEach(lap => {
+                    list.innerHTML += `
+                        <div class="flex justify-between items-center py-3 border-b-2 theme-border last:border-0">
+                            <div class="font-black text-sm theme-text tracking-wider uppercase">Lap ${lap.lapNum}</div>
+                            <div class="text-right flex gap-4 text-sm font-bold">
+                                <span class="theme-muted w-14 text-right">${this.formatDuration(lap.timeMs, false)}</span>
+                                <span class="text-amber-500 w-16 text-right">${(lap.distanceM * dMult).toFixed(2)}${uDist}</span>
+                                <span class="text-cyan-500 w-16 text-right">${(lap.avgSpeedMs * sMult).toFixed(1)}${uSpd}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            },
+
+            formatDuration(ms, showHoursAlways = true) {
+                const totalSeconds = Math.floor(ms / 1000);
+                const h = Math.floor(totalSeconds / 3600), m = Math.floor((totalSeconds % 3600) / 60), s = totalSeconds % 60;
+                const pad = num => num.toString().padStart(2, '0');
+                if (h > 0 || showHoursAlways) return `${pad(h)}:${pad(m)}:${pad(s)}`;
+                return `${pad(m)}:${pad(s)}`;
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
