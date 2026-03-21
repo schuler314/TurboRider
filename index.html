@@ -82,7 +82,8 @@
         }
     </style>
 </head>
-<body data-theme="dark" class="h-screen w-screen overflow-hidden flex flex-col no-select relative">
+<!-- Use 100dvh instead of h-screen to correctly account for mobile browser UI bars -->
+<body data-theme="dark" class="h-[100dvh] w-screen overflow-hidden flex flex-col no-select relative">
 
     <!-- TOP NAVIGATION -->
     <header id="main-header" class="theme-nav theme-border border-b p-4 px-6 flex justify-between items-center z-20 shrink-0 shadow-sm transition-colors">
@@ -131,7 +132,8 @@
         <div id="view-ride" class="absolute inset-0 hidden flex-col landscape:flex-row p-3 sm:p-4 gap-3 sm:gap-4 h-full w-full bg-[var(--bg-color)] z-30">
             
             <!-- Left Col (Landscape) / Top (Portrait): Timer & Speed -->
-            <div class="flex-1 flex flex-col w-full landscape:w-1/2 min-h-0 relative shrink">
+            <!-- Adjusted max-h for portrait mode so it never takes more than 35% of screen height -->
+            <div class="flex-1 flex flex-col w-full landscape:w-1/2 min-h-0 relative shrink max-h-[35vh] sm:max-h-[40vh] landscape:max-h-none">
                 <!-- Header part -->
                 <div class="flex flex-col items-center justify-center mb-1 shrink-0">
                     <div id="gps-status" class="flex items-center gap-1.5 text-cyan-500 bg-cyan-500/10 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-widest mb-1 landscape:mb-2">
@@ -151,8 +153,8 @@
                         </div>
                         
                         <div class="flex items-baseline justify-center px-2">
-                            <!-- Responsive text sizing bounded by vh/vw -->
-                            <span id="current-speed" class="metric-value text-[15vh] landscape:text-[20vh] font-black leading-none text-cyan-500 tracking-tighter drop-shadow-md truncate">0.0</span>
+                            <!-- Responsive text sizing adjusted to fit smaller vertical constraint -->
+                            <span id="current-speed" class="metric-value text-[12vh] landscape:text-[20vh] font-black leading-none text-cyan-500 tracking-tighter drop-shadow-md truncate">0.0</span>
                             <span id="speed-unit-display" class="ml-1 sm:ml-2 text-lg sm:text-3xl theme-muted font-black uppercase italic shrink-0">mph</span>
                         </div>
                         <div class="theme-muted text-[10px] sm:text-sm uppercase tracking-widest mt-2 font-black shrink-0">Current Speed</div>
@@ -161,7 +163,8 @@
             </div>
 
             <!-- Right Col (Landscape) / Bottom (Portrait): Tappables & Buttons -->
-            <div class="w-full landscape:w-1/2 flex flex-col justify-end landscape:justify-center shrink-0 landscape:shrink landscape:min-h-0 pt-2 landscape:pt-0 gap-3 sm:gap-4">
+            <!-- Added flex-1 in portrait to stretch out and ensure it fits all content nicely -->
+            <div class="flex-1 landscape:flex-none w-full landscape:w-1/2 flex flex-col justify-end landscape:justify-center shrink-0 landscape:shrink landscape:min-h-0 pt-2 landscape:pt-0 gap-3 sm:gap-4">
                 
                 <div id="tappable-metrics-area" class="cursor-pointer active:scale-[0.99] transition-transform w-full shrink-0">
                     <div class="flex justify-center mb-2 sm:mb-3">
@@ -352,29 +355,35 @@
     </nav>
 
     <!-- STOP CONFIRMATION MODAL -->
-    <div id="modal-stop" class="fixed inset-0 theme-overlay z-50 hidden flex-col items-center justify-center p-6 backdrop-blur-md overflow-y-auto">
-        <div class="theme-panel theme-border border-2 p-8 rounded-[2rem] w-full max-w-sm shadow-2xl text-center space-y-6 my-auto">
-            <h3 class="text-4xl font-black theme-text italic">PAUSED</h3>
+    <!-- Redesigned landscape layout to keep buttons visible -->
+    <div id="modal-stop" class="fixed inset-0 theme-overlay z-50 hidden flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-md overflow-y-auto">
+        <div class="theme-panel theme-border border-2 p-6 sm:p-8 rounded-[2rem] w-full max-w-sm landscape:max-w-3xl shadow-2xl text-center flex flex-col landscape:flex-row items-center landscape:items-stretch gap-6 my-auto">
             
-            <div id="pause-photo-gallery" class="flex gap-3 overflow-x-auto pb-2 hidden scroll-smooth snap-x"></div>
+            <!-- Modal Left Side (Landscape) / Top (Portrait) -->
+            <div class="flex flex-col w-full landscape:w-1/2 justify-center gap-4">
+                <h3 class="text-4xl font-black theme-text italic">PAUSED</h3>
+                <div id="pause-photo-gallery" class="flex gap-3 overflow-x-auto pb-2 hidden scroll-smooth snap-x"></div>
+            </div>
 
-            <div class="flex flex-col gap-4">
+            <!-- Modal Right Side (Landscape) / Bottom (Portrait) -->
+            <div class="flex flex-col gap-3 sm:gap-4 w-full landscape:w-1/2 justify-center">
                 <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="app.handlePhotoTaken(event)">
                 
-                <button onclick="document.getElementById('camera-input').click()" class="w-full py-4 rounded-2xl bg-[var(--bg-color)] theme-text font-black text-lg active:scale-95 transition-transform border-2 theme-border flex items-center justify-center gap-2 shadow-sm">
-                    <i data-lucide="camera" class="w-6 h-6 text-cyan-500"></i> TAKE PHOTO
+                <button onclick="document.getElementById('camera-input').click()" class="w-full py-3 sm:py-4 rounded-2xl bg-[var(--bg-color)] theme-text font-black text-base sm:text-lg active:scale-95 transition-transform border-2 theme-border flex items-center justify-center gap-2 shadow-sm shrink-0">
+                    <i data-lucide="camera" class="w-5 h-5 sm:w-6 sm:h-6 text-cyan-500"></i> TAKE PHOTO
                 </button>
 
-                <button onclick="app.cancelStop()" class="w-full py-5 rounded-2xl bg-cyan-500 text-white font-black text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(8,145,178,1)] active:shadow-none active:translate-y-[6px]">
+                <button onclick="app.cancelStop()" class="w-full py-4 sm:py-5 rounded-2xl bg-cyan-500 text-white font-black text-lg sm:text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(8,145,178,1)] active:shadow-none active:translate-y-[6px] shrink-0">
                     RESUME RIDE
                 </button>
-                <button onclick="app.endRide(true)" class="w-full py-5 rounded-2xl bg-amber-500 text-white font-black text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(217,119,6,1)] active:shadow-none active:translate-y-[6px]">
+                <button onclick="app.endRide(true)" class="w-full py-4 sm:py-5 rounded-2xl bg-amber-500 text-white font-black text-lg sm:text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(217,119,6,1)] active:shadow-none active:translate-y-[6px] shrink-0">
                     SAVE & FINISH
                 </button>
-                <button onclick="app.endRide(false)" class="w-full py-4 rounded-xl mt-2 text-red-500 font-bold text-sm bg-red-500/10 active:bg-red-500/20 transition-colors border border-red-500/20">
+                <button onclick="app.endRide(false)" class="w-full py-3 sm:py-4 rounded-xl mt-1 text-red-500 font-bold text-sm bg-red-500/10 active:bg-red-500/20 transition-colors border border-red-500/20 shrink-0">
                     <i data-lucide="trash-2" class="inline w-4 h-4 mr-1 relative -top-[1px]"></i> DELETE RIDE
                 </button>
             </div>
+
         </div>
     </div>
 
