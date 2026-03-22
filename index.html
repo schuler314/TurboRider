@@ -59,7 +59,7 @@
         .metric-value { 
             font-family: 'Roboto Mono', monospace; 
             font-style: italic; 
-            font-variant-numeric: tabular-nums; /* FIX: Prevents horizontal jittering of numbers */
+            font-variant-numeric: tabular-nums; 
         }
         
         .no-select { user-select: none; -webkit-user-select: none; }
@@ -82,7 +82,6 @@
         }
     </style>
 </head>
-<!-- Use 100dvh instead of h-screen to correctly account for mobile browser UI bars -->
 <body data-theme="dark" class="h-[100dvh] w-screen overflow-hidden flex flex-col no-select relative">
 
     <!-- TOP NAVIGATION -->
@@ -114,11 +113,6 @@
                     <h2 class="text-4xl landscape:text-5xl font-black theme-text italic leading-none">READY TO GO?</h2>
                     <p class="theme-muted font-bold tracking-wide text-base sm:text-lg">Grab your helmet and let's ride!</p>
                 </div>
-                
-                <button onclick="app.startRide(true)" class="w-full py-4 rounded-2xl theme-panel theme-text theme-border border-2 flex items-center justify-center gap-3 font-black active:scale-95 transition-transform shadow-lg shrink-0 text-sm sm:text-base">
-                    <i data-lucide="gamepad-2" class="w-6 h-6 text-amber-500"></i>
-                    SIMULATE RIDE (TEST)
-                </button>
             </div>
 
             <!-- Right Side / Bottom Block -->
@@ -299,12 +293,31 @@
                         <span class="text-sm font-black theme-muted">yrs</span>
                     </div>
                 </div>
+
+                <div class="font-black text-red-500 text-sm uppercase tracking-widest pl-2 mt-8">Danger Zone</div>
+                
+                <div class="theme-panel border-2 border-red-500/30 rounded-3xl p-5 flex flex-col gap-4 shadow-sm bg-red-500/5">
+                    <div>
+                        <div class="font-bold text-lg text-red-500">Clear All Data</div>
+                        <div class="text-sm theme-muted font-medium">Permanently delete all rides, photos, and earned badges.</div>
+                    </div>
+                    <button onclick="app.clearAllData()" class="w-full py-4 rounded-2xl bg-red-500 text-white font-black text-lg active:scale-95 transition-transform shadow-[0_6px_0_rgba(185,28,28,1)] active:shadow-none active:translate-y-[6px] flex items-center justify-center gap-2">
+                        <i data-lucide="trash-2" class="w-6 h-6"></i> ERASE EVERYTHING
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- VIEW 5: TROPHIES -->
         <div id="view-trophies" class="absolute inset-0 hidden flex-col p-4 overflow-y-auto fade-in pb-28 max-w-2xl mx-auto w-full">
-            <h2 class="text-3xl font-black mb-4 theme-text tracking-wide italic">CAREER STATS</h2>
+            
+            <!-- Dual Trophy Toggles -->
+            <div class="flex bg-[var(--panel-color)] p-1.5 rounded-full border-2 theme-border mb-6 shadow-sm shrink-0 mt-2">
+                <button id="tab-trophy-solo" onclick="app.setTrophyView('solo')" class="flex-1 py-2.5 rounded-full text-xs sm:text-sm font-black bg-cyan-500 text-white transition-colors tracking-wide w-1/2 text-center shadow-sm">SOLO RIDES</button>
+                <button id="tab-trophy-md" onclick="app.setTrophyView('md')" class="flex-1 py-2.5 rounded-full text-xs sm:text-sm font-black theme-muted transition-colors tracking-wide w-1/2 text-center">M.D RIDES</button>
+            </div>
+
+            <h2 class="text-3xl font-black mb-4 theme-text tracking-wide italic uppercase">Career Stats <span id="career-stats-label" class="text-sm text-cyan-500 ml-2">(Solo)</span></h2>
             
             <div class="grid grid-cols-2 gap-3 mb-8">
                 <div class="theme-panel border-2 theme-border rounded-[2rem] p-4 flex flex-col items-center justify-center shadow-sm">
@@ -355,9 +368,8 @@
     </nav>
 
     <!-- STOP CONFIRMATION MODAL -->
-    <!-- Redesigned landscape layout to keep buttons visible -->
     <div id="modal-stop" class="fixed inset-0 theme-overlay z-50 hidden flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-md overflow-y-auto">
-        <div class="theme-panel theme-border border-2 p-6 sm:p-8 rounded-[2rem] w-full max-w-sm landscape:max-w-3xl shadow-2xl text-center flex flex-col landscape:flex-row items-center landscape:items-stretch gap-6 my-auto">
+        <div class="theme-panel theme-border border-2 p-6 sm:p-8 rounded-[2rem] w-full max-w-sm landscape:max-w-4xl shadow-2xl text-center flex flex-col landscape:flex-row items-center landscape:items-stretch gap-6 my-auto">
             
             <!-- Modal Left Side (Landscape) / Top (Portrait) -->
             <div class="flex flex-col w-full landscape:w-1/2 justify-center gap-4">
@@ -366,20 +378,32 @@
             </div>
 
             <!-- Modal Right Side (Landscape) / Bottom (Portrait) -->
-            <div class="flex flex-col gap-3 sm:gap-4 w-full landscape:w-1/2 justify-center">
+            <div class="flex flex-col gap-2 sm:gap-3 w-full landscape:w-1/2 justify-center">
                 <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" onchange="app.handlePhotoTaken(event)">
                 
                 <button onclick="document.getElementById('camera-input').click()" class="w-full py-3 sm:py-4 rounded-2xl bg-[var(--bg-color)] theme-text font-black text-base sm:text-lg active:scale-95 transition-transform border-2 theme-border flex items-center justify-center gap-2 shadow-sm shrink-0">
                     <i data-lucide="camera" class="w-5 h-5 sm:w-6 sm:h-6 text-cyan-500"></i> TAKE PHOTO
                 </button>
 
-                <button onclick="app.cancelStop()" class="w-full py-4 sm:py-5 rounded-2xl bg-cyan-500 text-white font-black text-lg sm:text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(8,145,178,1)] active:shadow-none active:translate-y-[6px] shrink-0">
+                <!-- Mateo and Daddy Toggle -->
+                <div class="theme-panel border-2 theme-border rounded-2xl p-3 sm:p-4 flex justify-between items-center shadow-sm shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-indigo-500/10 p-1.5 rounded-lg"><i data-lucide="users" class="text-indigo-500 w-5 h-5"></i></div>
+                        <div class="font-black theme-text text-sm sm:text-base uppercase tracking-wide">M.D Ride</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-mateo-daddy" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                    </label>
+                </div>
+
+                <button onclick="app.cancelStop()" class="w-full py-3 sm:py-4 rounded-2xl bg-cyan-500 text-white font-black text-lg sm:text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(8,145,178,1)] active:shadow-none active:translate-y-[6px] shrink-0">
                     RESUME RIDE
                 </button>
-                <button onclick="app.endRide(true)" class="w-full py-4 sm:py-5 rounded-2xl bg-amber-500 text-white font-black text-lg sm:text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(217,119,6,1)] active:shadow-none active:translate-y-[6px] shrink-0">
+                <button onclick="app.endRide(true)" class="w-full py-3 sm:py-4 rounded-2xl bg-amber-500 text-white font-black text-lg sm:text-xl active:scale-95 transition-transform shadow-[0_6px_0_rgba(217,119,6,1)] active:shadow-none active:translate-y-[6px] shrink-0">
                     SAVE & FINISH
                 </button>
-                <button onclick="app.endRide(false)" class="w-full py-3 sm:py-4 rounded-xl mt-1 text-red-500 font-bold text-sm bg-red-500/10 active:bg-red-500/20 transition-colors border border-red-500/20 shrink-0">
+                <button onclick="app.endRide(false)" class="w-full py-3 rounded-xl mt-1 text-red-500 font-bold text-sm bg-red-500/10 active:bg-red-500/20 transition-colors border border-red-500/20 shrink-0">
                     <i data-lucide="trash-2" class="inline w-4 h-4 mr-1 relative -top-[1px]"></i> DELETE RIDE
                 </button>
             </div>
@@ -408,7 +432,10 @@
     <div id="modal-details" class="fixed inset-0 var(--bg-color) z-50 hidden flex-col overflow-y-auto bg-[var(--bg-color)]">
         <div class="p-4 px-6 flex justify-between items-center theme-border border-b sticky top-0 theme-overlay backdrop-blur z-20">
             <div>
-                <h3 class="text-2xl font-black theme-text italic" id="detail-date">SUMMARY</h3>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-2xl font-black theme-text italic" id="detail-date">SUMMARY</h3>
+                    <span id="detail-md-badge" class="hidden bg-indigo-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">M.D RIDE</span>
+                </div>
                 <div id="detail-weather" class="text-sm font-bold theme-muted flex items-center gap-1 mt-1 hidden"></div>
             </div>
             <button onclick="app.closeDetails()" class="p-2 theme-panel rounded-xl active:scale-90 transition-transform border theme-border shadow-sm">
@@ -512,9 +539,12 @@
             currentLap: { distance: 0, maxSpeed: 0 },
             history: [],
             
-            // All-time calculated stats
-            earnedBadgeIds: new Set(),
-            allTimeStats: { rides: 0, maxSpeedMs: 0, maxDistM: 0, maxClimbM: 0, totalDistM: 0 },
+            // Dual Trophies Tracking
+            trophyViewMode: 'solo', // 'solo' or 'md'
+            trophyData: {
+                solo: { stats: { rides: 0, maxSpeedMs: 0, maxDistM: 0, maxClimbM: 0, totalDistM: 0 }, badges: new Set() },
+                md: { stats: { rides: 0, maxSpeedMs: 0, maxDistM: 0, maxClimbM: 0, totalDistM: 0 }, badges: new Set() }
+            },
 
             chart: null,
             leafletMap: null,
@@ -619,6 +649,25 @@
                         resolve();
                     };
                 });
+            },
+
+            async clearAllData() {
+                if (confirm("Are you sure you want to permanently delete all rides, photos, and awards? This cannot be undone.")) {
+                    return new Promise((resolve) => {
+                        const tx = this.db.transaction('rides', 'readwrite');
+                        tx.objectStore('rides').clear();
+                        tx.oncomplete = () => {
+                            this.history = [];
+                            this.recalculateAllStatsAndBadges();
+                            this.renderHistory();
+                            if(!document.getElementById('view-trophies').classList.contains('hidden')) {
+                                this.renderTrophies();
+                            }
+                            alert("All ride data has been erased.");
+                            resolve();
+                        };
+                    });
+                }
             },
 
             loadSettings() {
@@ -809,6 +858,23 @@
                 }
             },
 
+            setTrophyView(mode) {
+                this.trophyViewMode = mode;
+                const sTab = document.getElementById('tab-trophy-solo');
+                const mdTab = document.getElementById('tab-trophy-md');
+                
+                if(mode === 'solo') {
+                    sTab.className = "flex-1 py-2.5 rounded-full text-xs sm:text-sm font-black bg-cyan-500 text-white transition-colors tracking-wide w-1/2 text-center shadow-sm";
+                    mdTab.className = "flex-1 py-2.5 rounded-full text-xs sm:text-sm font-black theme-muted transition-colors tracking-wide w-1/2 text-center";
+                    document.getElementById('career-stats-label').innerText = "(Solo)";
+                } else {
+                    mdTab.className = "flex-1 py-2.5 rounded-full text-xs sm:text-sm font-black bg-indigo-500 text-white transition-colors tracking-wide w-1/2 text-center shadow-sm";
+                    sTab.className = "flex-1 py-2.5 rounded-full text-xs sm:text-sm font-black theme-muted transition-colors tracking-wide w-1/2 text-center";
+                    document.getElementById('career-stats-label').innerText = "(Mateo & Daddy)";
+                }
+                this.renderTrophies();
+            },
+
             startRide(simulate = false) {
                 this.isSimulating = simulate;
                 this.isRiding = true;
@@ -826,6 +892,8 @@
                 this.currentPhotos = [];
                 this.currentWeather = null;
                 this.isFetchingWeather = false;
+                document.getElementById('toggle-mateo-daddy').checked = false; // Reset toggle
+                
                 this.renderPauseMenuPhotos();
                 this.currentLap = { distance: 0, maxSpeed: 0 };
                 this.setMetricsView('total');
@@ -1162,6 +1230,8 @@
             },
 
             async endRide(save) {
+                const isMateoAndDaddy = document.getElementById('toggle-mateo-daddy').checked;
+
                 this.cancelStop();
                 this.isRiding = false;
                 this.releaseWakeLock();
@@ -1196,6 +1266,7 @@
                         elevationGainM: this.metrics.elevationGain,
                         calories: calories,
                         weather: this.currentWeather,
+                        isMateoAndDaddy: isMateoAndDaddy,
                         pathData: [...this.metrics.pathData],
                         path: [...this.metrics.path],
                         laps: [...this.laps],
@@ -1218,66 +1289,74 @@
 
             // --- ALL-TIME STATS & BADGE LOGIC ---
             recalculateAllStatsAndBadges() {
-                let maxSpeedMs = 0;
-                let maxDistM = 0;
-                let maxClimbM = 0;
-                let totalDistM = 0;
-                
-                this.history.forEach(r => {
-                    if (r.maxSpeedMs > maxSpeedMs) maxSpeedMs = r.maxSpeedMs;
-                    if (r.distanceM > maxDistM) maxDistM = r.distanceM;
-                    if (r.elevationGainM > maxClimbM) maxClimbM = r.elevationGainM;
-                    totalDistM += r.distanceM;
-                });
+                const processSet = (ridesFilter) => {
+                    let maxSpeedMs = 0;
+                    let maxDistM = 0;
+                    let maxClimbM = 0;
+                    let totalDistM = 0;
+                    
+                    ridesFilter.forEach(r => {
+                        if (r.maxSpeedMs > maxSpeedMs) maxSpeedMs = r.maxSpeedMs;
+                        if (r.distanceM > maxDistM) maxDistM = r.distanceM;
+                        if (r.elevationGainM > maxClimbM) maxClimbM = r.elevationGainM;
+                        totalDistM += r.distanceM;
+                    });
 
-                this.allTimeStats = {
-                    rides: this.history.length,
-                    maxSpeedMs,
-                    maxDistM,
-                    maxClimbM,
-                    totalDistM
+                    const stats = {
+                        rides: ridesFilter.length,
+                        maxSpeedMs,
+                        maxDistM,
+                        maxClimbM,
+                        totalDistM
+                    };
+
+                    const mph = maxSpeedMs * this.MS_TO_MPH;
+                    const distMi = maxDistM * this.M_TO_MILES;
+                    const climbFt = maxClimbM * this.M_TO_FT;
+                    const rides = ridesFilter.length;
+
+                    const badges = new Set();
+                    
+                    this.BADGE_SERIES.find(s => s.id === 'speed').levels.forEach(l => { if (mph >= l.threshold) badges.add(l.id); });
+                    this.BADGE_SERIES.find(s => s.id === 'dist').levels.forEach(l => { if (distMi >= l.threshold) badges.add(l.id); });
+                    this.BADGE_SERIES.find(s => s.id === 'climb').levels.forEach(l => { if (climbFt >= l.threshold) badges.add(l.id); });
+                    this.BADGE_SERIES.find(s => s.id === 'rides').levels.forEach(l => { if (rides >= l.threshold) badges.add(l.id); });
+                    
+                    ridesFilter.forEach(r => {
+                        const hour = new Date(r.date).getHours();
+                        if (hour >= 20 || hour <= 4) badges.add('night_rider');
+                        if (hour >= 4 && hour < 7) badges.add('early_bird');
+                        if (r.photos && r.photos.length > 0) badges.add('photographer');
+                    });
+
+                    return { stats, badges };
                 };
 
-                const mph = maxSpeedMs * this.MS_TO_MPH;
-                const distMi = maxDistM * this.M_TO_MILES;
-                const climbFt = maxClimbM * this.M_TO_FT;
-                const rides = this.history.length;
+                const soloRides = this.history.filter(r => !r.isMateoAndDaddy);
+                const mdRides = this.history.filter(r => r.isMateoAndDaddy);
 
-                this.earnedBadgeIds = new Set();
-                
-                // Assign Series Badges based on all-time maxes
-                this.BADGE_SERIES.find(s => s.id === 'speed').levels.forEach(l => { if (mph >= l.threshold) this.earnedBadgeIds.add(l.id); });
-                this.BADGE_SERIES.find(s => s.id === 'dist').levels.forEach(l => { if (distMi >= l.threshold) this.earnedBadgeIds.add(l.id); });
-                this.BADGE_SERIES.find(s => s.id === 'climb').levels.forEach(l => { if (climbFt >= l.threshold) this.earnedBadgeIds.add(l.id); });
-                this.BADGE_SERIES.find(s => s.id === 'rides').levels.forEach(l => { if (rides >= l.threshold) this.earnedBadgeIds.add(l.id); });
-                
-                // Scan rides for special achievements
-                this.history.forEach(r => {
-                    const hour = new Date(r.date).getHours();
-                    if (hour >= 20 || hour <= 4) this.earnedBadgeIds.add('night_rider');
-                    if (hour >= 4 && hour < 7) this.earnedBadgeIds.add('early_bird');
-                    if (r.photos && r.photos.length > 0) this.earnedBadgeIds.add('photographer');
-                });
+                this.trophyData.solo = processSet(soloRides);
+                this.trophyData.md = processSet(mdRides);
             },
 
             renderTrophies() {
-                // Render Top Stats
+                const currentData = this.trophyData[this.trophyViewMode];
+                
                 const sMult = this.units === 'imperial' ? this.MS_TO_MPH : this.MS_TO_KMH;
                 const dMult = this.units === 'imperial' ? this.M_TO_MILES : this.M_TO_KM;
                 const eMult = this.units === 'imperial' ? this.M_TO_FT : 1;
 
-                document.getElementById('stat-total-rides').innerText = this.allTimeStats.rides;
-                document.getElementById('stat-max-speed').innerText = (this.allTimeStats.maxSpeedMs * sMult).toFixed(1);
-                document.getElementById('stat-total-dist').innerText = (this.allTimeStats.totalDistM * dMult).toFixed(1);
-                document.getElementById('stat-max-climb').innerText = Math.round(this.allTimeStats.maxClimbM * eMult);
+                document.getElementById('stat-total-rides').innerText = currentData.stats.rides;
+                document.getElementById('stat-max-speed').innerText = (currentData.stats.maxSpeedMs * sMult).toFixed(1);
+                document.getElementById('stat-total-dist').innerText = (currentData.stats.totalDistM * dMult).toFixed(1);
+                document.getElementById('stat-max-climb').innerText = Math.round(currentData.stats.maxClimbM * eMult);
 
-                // Render Series Badges (Highest level earned, or Level 1 locked)
                 const list = document.getElementById('trophy-list');
                 list.innerHTML = '';
                 
                 this.BADGE_SERIES.forEach(series => {
                     let highestEarnedLevel = null;
-                    series.levels.forEach(l => { if (this.earnedBadgeIds.has(l.id)) highestEarnedLevel = l; });
+                    series.levels.forEach(l => { if (currentData.badges.has(l.id)) highestEarnedLevel = l; });
                     
                     const displayLevel = highestEarnedLevel || series.levels[0];
                     const isEarned = highestEarnedLevel !== null;
@@ -1297,12 +1376,11 @@
                     list.appendChild(card);
                 });
 
-                // Render Special Badges
                 const specList = document.getElementById('special-trophy-list');
                 specList.innerHTML = '';
                 
                 this.SPECIAL_BADGES.forEach(sb => {
-                    const isEarned = this.earnedBadgeIds.has(sb.id);
+                    const isEarned = currentData.badges.has(sb.id);
                     const card = document.createElement('div');
                     card.className = `theme-panel border-2 theme-border rounded-[2rem] p-5 flex flex-col items-center justify-center text-center shadow-md relative overflow-hidden transition-transform hover:scale-105 ${isEarned ? `border-${sb.color.split('-')[1]}-500/30 bg-${sb.color.split('-')[1]}-500/5` : 'opacity-60 grayscale'}`;
                     
@@ -1329,8 +1407,10 @@
                 const list = document.getElementById('series-modal-list');
                 list.innerHTML = '';
 
+                const currentData = this.trophyData[this.trophyViewMode];
+
                 series.levels.forEach((l, index) => {
-                    const isEarned = this.earnedBadgeIds.has(l.id);
+                    const isEarned = currentData.badges.has(l.id);
                     const val = this.units === 'imperial' ? l.threshold : Math.round(l.threshold * series.metricMult);
                     const label = this.units === 'imperial' ? series.unitLabel : series.metricUnitLabel;
                     
@@ -1360,16 +1440,17 @@
             exportCSV() {
                 if(this.history.length === 0) return alert("No rides to export!");
                 
-                let csv = "Date,Duration,Distance(mi),Avg Speed(mph),Max Speed(mph),Elevation(ft),Calories\n";
+                let csv = "Date,M.D Ride,Duration,Distance(mi),Avg Speed(mph),Max Speed(mph),Elevation(ft),Calories\n";
                 this.history.forEach(r => {
                     const d = new Date(r.date).toLocaleDateString();
+                    const md = r.isMateoAndDaddy ? 'Yes' : 'No';
                     const dur = this.formatDuration(r.durationMs);
                     const dist = (r.distanceM * this.M_TO_MILES).toFixed(2);
                     const avg = (r.avgSpeedMs * this.MS_TO_MPH).toFixed(1);
                     const max = (r.maxSpeedMs * this.MS_TO_MPH).toFixed(1);
                     const elev = Math.round(r.elevationGainM * this.M_TO_FT);
                     const cal = Math.round(r.calories || 0);
-                    csv += `${d},${dur},${dist},${avg},${max},${elev},${cal}\n`;
+                    csv += `${d},${md},${dur},${dist},${avg},${max},${elev},${cal}\n`;
                 });
 
                 const blob = new Blob([csv], { type: 'text/csv' });
@@ -1395,21 +1476,22 @@
                 this.history.forEach(ride => {
                     const d = new Date(ride.date);
                     const card = document.createElement('div');
-                    card.className = "theme-panel theme-border border-2 p-5 rounded-3xl flex justify-between items-center cursor-pointer transition-transform shadow-sm hover:-translate-y-1 hover:border-cyan-500/50";
+                    card.className = "theme-panel theme-border border-2 p-5 rounded-3xl flex justify-between items-center cursor-pointer transition-transform shadow-sm hover:-translate-y-1 hover:border-cyan-500/50 relative overflow-hidden";
                     card.onclick = () => this.showRideDetails(ride.id);
                     
                     const wInfo = ride.weather ? this.getFormattedWeather(ride.weather) : null;
                     const weatherHtml = wInfo ? `<span class="opacity-50 mx-1">•</span><i data-lucide="${wInfo.icon}" class="w-3.5 h-3.5"></i> ${wInfo.temp}${wInfo.unit}` : '';
+                    const mdHtml = ride.isMateoAndDaddy ? `<span class="bg-indigo-500 text-white text-[9px] px-2 py-0.5 rounded-full uppercase ml-2 tracking-wider inline-flex items-center gap-1"><i data-lucide="users" class="w-2.5 h-2.5"></i> M.D</span>` : '';
 
                     card.innerHTML = `
                         <div>
-                            <div class="font-black text-xl theme-text italic tracking-wide">${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</div>
+                            <div class="font-black text-xl theme-text italic tracking-wide flex items-center">${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()} ${mdHtml}</div>
                             <div class="text-sm font-bold theme-muted flex items-center gap-1 mt-0.5">
                                 ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                                 ${weatherHtml}
                             </div>
                         </div>
-                        <div class="text-right">
+                        <div class="text-right shrink-0">
                             <div class="font-black text-2xl text-cyan-500 metric-value">${(ride.distanceM * distMult).toFixed(2)} <span class="text-xs font-bold theme-muted">${distUnit}</span></div>
                             <div class="text-sm font-bold theme-text metric-value">${this.formatDuration(ride.durationMs, false)}</div>
                         </div>
@@ -1431,6 +1513,15 @@
 
                 document.getElementById('detail-date').innerText = new Date(ride.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
                 
+                const mdBadge = document.getElementById('detail-md-badge');
+                if(ride.isMateoAndDaddy) {
+                    mdBadge.classList.remove('hidden');
+                    mdBadge.classList.add('inline-flex');
+                } else {
+                    mdBadge.classList.add('hidden');
+                    mdBadge.classList.remove('inline-flex');
+                }
+
                 const weatherEl = document.getElementById('detail-weather');
                 if (ride.weather) {
                     const wInfo = this.getFormattedWeather(ride.weather);
