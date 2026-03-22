@@ -126,15 +126,15 @@
         <div id="view-ride" class="absolute inset-0 hidden flex-col landscape:flex-row p-3 sm:p-4 gap-3 sm:gap-4 h-full w-full bg-[var(--bg-color)] z-30">
             
             <!-- Left Col (Landscape) / Top (Portrait): Timer & Speed -->
-            <!-- Adjusted max-h for portrait mode so it never takes more than 35% of screen height -->
-            <div class="flex-1 flex flex-col w-full landscape:w-1/2 min-h-0 relative shrink max-h-[35vh] sm:max-h-[40vh] landscape:max-h-none">
+            <!-- Adjusted max-h for portrait mode to accommodate the massive 75% larger timer -->
+            <div class="flex-1 flex flex-col w-full landscape:w-1/2 min-h-0 relative shrink max-h-[45vh] sm:max-h-[50vh] landscape:max-h-none">
                 <!-- Header part -->
                 <div class="flex flex-col items-center justify-center mb-1 shrink-0">
                     <div id="gps-status" class="flex items-center gap-1.5 text-cyan-500 bg-cyan-500/10 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-widest mb-1 landscape:mb-2">
                         <div class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
                         GPS ACTIVE
                     </div>
-                    <div id="ride-timer" class="metric-value text-4xl sm:text-5xl landscape:text-5xl font-black theme-text tracking-tighter drop-shadow-sm leading-none">00:00:00</div>
+                    <div id="ride-timer" class="metric-value text-[4rem] sm:text-[5.25rem] landscape:text-[5.25rem] font-black theme-text tracking-tighter drop-shadow-sm leading-none">00:00:00</div>
                 </div>
 
                 <!-- Speedo part -->
@@ -157,8 +157,8 @@
             </div>
 
             <!-- Right Col (Landscape) / Bottom (Portrait): Tappables & Buttons -->
-            <!-- Added flex-1 in portrait to stretch out and ensure it fits all content nicely -->
-            <div class="flex-1 landscape:flex-none w-full landscape:w-1/2 flex flex-col justify-end landscape:justify-center shrink-0 landscape:shrink landscape:min-h-0 pt-2 landscape:pt-0 gap-3 sm:gap-4">
+            <!-- Changed justify-end to justify-start to place metrics & buttons directly under the speed card in portrait -->
+            <div class="flex-1 landscape:flex-none w-full landscape:w-1/2 flex flex-col justify-start landscape:justify-center shrink-0 landscape:shrink landscape:min-h-0 pt-2 landscape:pt-0 gap-3 sm:gap-4">
                 
                 <div id="tappable-metrics-area" class="cursor-pointer active:scale-[0.99] transition-transform w-full shrink-0">
                     <div class="flex justify-center mb-2 sm:mb-3">
