@@ -104,44 +104,65 @@
     <!-- MAIN CONTENT AREA -->
     <main class="flex-1 relative overflow-y-auto w-full max-w-4xl mx-auto flex flex-col">
         
-        <!-- VIEW 1: START SCREEN -->
+        <!-- VIEW 1: START SCREEN (Responsive Portrait/Landscape) -->
         <div id="view-start" class="absolute inset-0 flex flex-col landscape:flex-row items-center justify-center p-6 gap-8 landscape:gap-12 fade-in overflow-y-auto">
+            
+            <!-- Left Side / Top Block -->
             <div class="flex flex-col items-center landscape:items-start gap-6 landscape:gap-8 w-full max-w-sm text-center landscape:text-left shrink-0">
                 <div class="space-y-2 bg-[var(--panel-color)]/80 backdrop-blur p-6 sm:p-8 rounded-[2rem] theme-border border-2 shadow-lg w-full">
                     <h2 class="text-4xl landscape:text-5xl font-black theme-text italic leading-none">READY TO GO?</h2>
                     <p class="theme-muted font-bold tracking-wide text-base sm:text-lg">Grab your helmet and let's ride!</p>
+                    
+                    <!-- Pre-Ride Connection Dashboard -->
+                    <div class="flex flex-col gap-3 mt-6 pt-6 border-t theme-border">
+                        <button id="btn-pre-gps" onclick="app.warmUpGPS()" class="w-full py-3 sm:py-4 rounded-2xl bg-[var(--bg-color)] theme-text font-black text-sm border-2 theme-border flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm">
+                            <i data-lucide="satellite" class="w-5 h-5 text-amber-500"></i> <span id="pre-gps-text">WARM UP GPS</span>
+                        </button>
+                        <button id="btn-pre-hr" onclick="app.toggleHRM()" class="w-full py-3 sm:py-4 rounded-2xl bg-[var(--bg-color)] theme-text font-black text-sm border-2 theme-border flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm">
+                            <i data-lucide="heart" class="w-5 h-5 text-rose-500" id="pre-hr-icon"></i> <span id="pre-hr-text">CONNECT HR</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <!-- Right Side / Bottom Block -->
             <button onclick="app.startRide(false)" class="w-64 h-64 sm:w-72 sm:h-72 landscape:w-80 landscape:h-80 rounded-full bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 shadow-[0_0_60px_rgba(6,182,212,0.4)] flex flex-col items-center justify-center transition-transform transform active:scale-95 border-8 border-cyan-300/30 shrink-0">
                 <i data-lucide="rocket" class="w-24 h-24 landscape:w-32 landscape:h-32 text-white -mt-4"></i>
                 <span class="text-white font-black text-3xl landscape:text-4xl mt-2 tracking-widest italic">START</span>
             </button>
         </div>
 
-        <!-- VIEW 2: ACTIVE RIDE DASHBOARD -->
+        <!-- VIEW 2: ACTIVE RIDE DASHBOARD (Strict Flexbox to prevent overflow) -->
         <div id="view-ride" class="absolute inset-0 hidden flex-col landscape:flex-row p-3 sm:p-4 gap-3 sm:gap-4 h-full w-full bg-[var(--bg-color)] z-30">
             
-            <!-- Floating Fullscreen Toggle for Ride Mode -->
             <button onclick="app.toggleFullScreen()" class="absolute top-4 right-4 p-3 bg-slate-900/50 backdrop-blur rounded-full text-white active:scale-90 transition-transform shadow-lg z-50">
-                <i data-lucide="maximize" class="w-6 h-6 fullscreen-icon"></i>
+                <i data-lucide="maximize" class="w-5 h-5 sm:w-6 sm:h-6 fullscreen-icon"></i>
             </button>
 
             <!-- Left Col (Landscape) / Top (Portrait) -->
             <div class="flex-1 flex flex-col w-full landscape:w-1/2 min-h-0 relative shrink max-h-[45vh] sm:max-h-[50vh] landscape:max-h-none">
                 <div class="flex flex-col items-center justify-center mb-1 shrink-0 mt-2">
-                    <div id="gps-status" class="flex items-center gap-1.5 text-cyan-500 bg-cyan-500/10 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-widest mb-1 landscape:mb-2">
-                        <div class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
-                        GPS ACTIVE
+                    
+                    <div class="flex items-center gap-2 mb-1 landscape:mb-2">
+                        <div id="gps-status" class="flex items-center gap-1.5 text-cyan-500 bg-cyan-500/10 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-widest">
+                            <div class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
+                            GPS ACTIVE
+                        </div>
+                        <button onclick="app.toggleHRM()" id="hr-status" class="flex items-center gap-1.5 text-rose-500 bg-rose-500/10 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-widest active:scale-95 transition-transform">
+                            <i data-lucide="heart" class="w-2.5 h-2.5 animate-pulse hidden" id="hr-pulse"></i>
+                            <i data-lucide="bluetooth" class="w-2.5 h-2.5" id="hr-icon"></i>
+                            <span id="hr-value">CONNECT HR</span>
+                        </button>
                     </div>
+
                     <div id="ride-timer" class="metric-value text-[4rem] sm:text-[5.25rem] landscape:text-[5.25rem] font-black theme-text tracking-tighter drop-shadow-sm leading-none">00:00:00</div>
                 </div>
 
                 <div class="flex-1 flex flex-col items-center justify-center relative w-full min-h-0 mt-1 landscape:mt-2">
                     <div class="theme-panel border-4 theme-border w-full h-full rounded-[2rem] sm:rounded-[3rem] shadow-xl flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-b from-[var(--panel-color)] to-[var(--bg-color)] min-h-0 py-2">
                         <div id="auto-pause-indicator" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center hidden transition-opacity">
-                            <i data-lucide="pause-circle" class="w-16 h-16 text-amber-500 mb-2"></i>
-                            <span class="text-2xl sm:text-3xl font-black text-white italic tracking-wider">AUTO-PAUSED</span>
+                            <i data-lucide="pause-circle" class="w-12 h-12 text-amber-500 mb-2"></i>
+                            <span class="text-xl sm:text-2xl font-black text-white italic tracking-wider">AUTO-PAUSED</span>
                         </div>
                         
                         <div class="flex items-baseline justify-center px-2">
@@ -158,37 +179,37 @@
                 
                 <div id="tappable-metrics-area" class="cursor-pointer active:scale-[0.99] transition-transform w-full shrink-0">
                     <div class="flex justify-center mb-3 sm:mb-4">
-                        <div class="theme-panel border-2 theme-border rounded-full p-1.5 flex shadow-md bg-[var(--bg-color)] relative">
-                            <div id="tab-total" class="px-8 py-3 sm:py-4 rounded-full text-lg sm:text-xl font-black bg-cyan-500 text-white transition-colors tracking-wide w-32 sm:w-40 text-center">TOTAL</div>
-                            <div id="tab-lap" class="px-8 py-3 sm:py-4 rounded-full text-lg sm:text-xl font-black theme-muted transition-colors tracking-wide w-32 sm:w-40 text-center">LAP <span id="lap-counter"></span></div>
+                        <div class="theme-panel border-2 theme-border rounded-full p-1.5 flex shadow-sm bg-[var(--bg-color)] relative">
+                            <div id="tab-total" class="px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-black bg-cyan-500 text-white transition-colors tracking-wide w-24 sm:w-32 text-center shadow-sm">TOTAL</div>
+                            <div id="tab-lap" class="px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-black theme-muted transition-colors tracking-wide w-24 sm:w-32 text-center">LAP <span id="lap-counter"></span></div>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 sm:gap-4 pointer-events-none">
-                        <div class="theme-panel border-2 theme-border shadow-md rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 flex flex-col items-center justify-center min-h-0">
-                            <span id="current-distance" class="metric-value text-5xl sm:text-6xl landscape:text-6xl font-black theme-text text-amber-500 leading-none">0.00</span>
-                            <span class="theme-muted text-[12px] sm:text-[14px] uppercase tracking-widest mt-2 font-black">Dist (<span class="unit-dist">mi</span>)</span>
+                        <div class="theme-panel border-2 theme-border shadow-md rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 flex flex-col items-center justify-center min-h-0">
+                            <span id="current-distance" class="metric-value text-4xl sm:text-5xl landscape:text-5xl font-black theme-text text-amber-500 leading-none">0.00</span>
+                            <span class="theme-muted text-[10px] sm:text-[12px] uppercase tracking-widest mt-2 font-black">Dist (<span class="unit-dist">mi</span>)</span>
                         </div>
-                        <div class="theme-panel border-2 theme-border shadow-md rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 flex flex-col items-center justify-center min-h-0">
-                            <span id="avg-speed" class="metric-value text-5xl sm:text-6xl landscape:text-6xl font-black theme-text leading-none">0.0</span>
-                            <span class="theme-muted text-[12px] sm:text-[14px] uppercase tracking-widest mt-2 font-black">Avg (<span class="unit-speed">mph</span>)</span>
+                        <div class="theme-panel border-2 theme-border shadow-md rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 flex flex-col items-center justify-center min-h-0">
+                            <span id="avg-speed" class="metric-value text-4xl sm:text-5xl landscape:text-5xl font-black theme-text leading-none">0.0</span>
+                            <span class="theme-muted text-[10px] sm:text-[12px] uppercase tracking-widest mt-2 font-black">Avg (<span class="unit-speed">mph</span>)</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="flex gap-3 sm:gap-4 w-full shrink-0 mt-2">
-                    <button onclick="app.markLap()" class="flex-1 py-6 sm:py-8 rounded-3xl bg-amber-500 active:bg-amber-600 text-white font-black text-2xl sm:text-3xl shadow-[0_8px_0_rgba(217,119,6,1)] active:shadow-[0_0px_0_rgba(217,119,6,1)] active:translate-y-[8px] flex items-center justify-center gap-3 transition-all">
-                        <i data-lucide="timer" class="w-8 h-8 sm:w-10 sm:h-10"></i>
+                <div class="flex gap-3 w-full shrink-0 mt-1">
+                    <button onclick="app.markLap()" class="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl bg-amber-500 active:bg-amber-600 text-white font-black text-xl sm:text-2xl shadow-[0_6px_0_rgba(217,119,6,1)] active:shadow-[0_0px_0_rgba(217,119,6,1)] active:translate-y-[6px] flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="timer" class="w-6 h-6 sm:w-7 sm:h-7"></i>
                         LAP
                     </button>
                     
-                    <button id="btn-stop" class="flex-1 py-6 sm:py-8 rounded-3xl bg-red-500 active:bg-red-700 text-white font-black text-2xl sm:text-3xl shadow-[0_8px_0_rgba(185,28,28,1)] active:shadow-[0_0px_0_rgba(185,28,28,1)] active:translate-y-[8px] flex items-center justify-center gap-3 transition-all">
-                        <i data-lucide="square" class="w-7 h-7 sm:w-8 sm:h-8 fill-current"></i>
+                    <button id="btn-stop" class="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl bg-red-500 active:bg-red-700 text-white font-black text-xl sm:text-2xl shadow-[0_6px_0_rgba(185,28,28,1)] active:shadow-[0_0px_0_rgba(185,28,28,1)] active:translate-y-[6px] flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="square" class="w-5 h-5 sm:w-6 sm:h-6 fill-current"></i>
                         HOLD STOP
                     </button>
                 </div>
 
-                <!-- Live Lap Area (Appears after first lap) -->
+                <!-- Live Lap Area -->
                 <div id="active-lap-container" class="w-full mt-2 theme-panel border-2 theme-border rounded-[2rem] p-4 hidden flex-col gap-2 shrink-0 shadow-inner">
                     <h4 class="theme-muted text-[10px] font-black uppercase tracking-widest text-center mb-1">Previous Laps</h4>
                     <div id="active-lap-list" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-2"></div>
@@ -507,8 +528,8 @@
             watchId: null,
             
             metrics: {
-                distance: 0, currentSpeed: 0, maxSpeed: 0, elevationGain: 0,
-                pathData: [], path: [], lastPosition: null, lastAltitude: null
+                distance: 0, currentSpeed: 0, maxSpeed: 0, elevationGain: 0, currentHR: null,
+                pathData: [], path: [], lastPosition: null, lastAltitude: null, hadLongPause: false
             },
 
             currentPhotos: [], 
@@ -525,6 +546,11 @@
                 solo: { stats: { rides: 0, maxSpeedMs: 0, maxDistM: 0, maxClimbM: 0, totalDistM: 0 }, badges: new Set() },
                 md: { stats: { rides: 0, maxSpeedMs: 0, maxDistM: 0, maxClimbM: 0, totalDistM: 0 }, badges: new Set() }
             },
+
+            hrDevice: null,
+            currentPauseDurationSec: 0,
+            gpsWarmedUp: false,
+            warmUpWatchId: null,
 
             chart: null, leafletMap: null, mapPolyline: null,
 
@@ -576,7 +602,7 @@
             SPECIAL_BADGES_MD: [
                 { id: 'sugar_rush', name: 'Sugar Rush', icon: 'candy', desc: 'Hit 18+ mph', color: 'text-pink-500' },
                 { id: 'puddle_jumper', name: 'Puddle Jumper', icon: 'cloud-rain', desc: 'Rode in the rain', color: 'text-blue-400' },
-                { id: 'snack_break', name: 'Snack Break', icon: 'cookie', desc: 'Stopped for a snack break', color: 'text-amber-600' },
+                { id: 'snack_break', name: 'Snack Break', icon: 'cookie', desc: 'Paused for over 5 minutes', color: 'text-amber-600' },
                 { id: 'weekend_warrior', name: 'Weekend Warrior', icon: 'swords', desc: 'Rode on Sat or Sun', color: 'text-red-500' },
                 { id: 'dino_legs', name: 'Dinosaur Legs', icon: 'footprints', desc: 'Climbed 100+ feet', color: 'text-emerald-600' },
                 { id: 'freeze_frame', name: 'Freeze Frame', icon: 'camera', desc: 'Took 3+ photos', color: 'text-cyan-400' },
@@ -587,14 +613,14 @@
             ],
 
             SPECIAL_BADGES_SOLO: [
-                { id: 'midlife', name: 'Midlife Crisis?', icon: 'flame', desc: 'Hit 30+ mph', color: 'text-red-600' },
+                { id: 'aero', name: 'Aero Dynamic', icon: 'wind', desc: 'Hit 30+ mph', color: 'text-red-600' },
                 { id: 'dawn_patrol', name: 'Dawn Patrol', icon: 'sunrise', desc: 'Rode before 6 AM', color: 'text-orange-500' },
                 { id: 'commuter', name: 'Commuter', icon: 'briefcase', desc: 'Rode during rush hour', color: 'text-slate-500' },
                 { id: 'century_prep', name: 'Century Prep', icon: 'medal', desc: 'Rode 20+ miles', color: 'text-yellow-500' },
                 { id: 'lunch_lap', name: 'Lunch Break Lap', icon: 'sandwich', desc: 'Rode 11 AM - 1 PM', color: 'text-green-500' },
                 { id: 'calorie_crush', name: 'Calorie Crusher', icon: 'activity', desc: 'Burned 500+ kcal', color: 'text-rose-500' },
                 { id: 'alpine', name: 'Alpine Ascent', icon: 'mountain-snow', desc: 'Climbed 1000+ ft', color: 'text-teal-500' },
-                { id: 'escape', name: 'Escaping the Kids', icon: 'door-open', desc: 'Rode for 2+ hours', color: 'text-indigo-600' },
+                { id: 'zen_master', name: 'Zen Master', icon: 'headphones', desc: 'Rode for 2+ hours', color: 'text-indigo-600' },
                 { id: 'cardiac', name: 'Cardiac Output', icon: 'heart-pulse', desc: 'Burned 1000+ kcal', color: 'text-red-500' },
                 { id: 'night_rider', name: 'Night Rider', icon: 'moon-star', desc: 'Rode past sunset', color: 'text-indigo-300' }
             ],
@@ -749,13 +775,13 @@
                 
                 const startPress = (e) => {
                     if(e.type === 'touchstart') e.preventDefault(); 
-                    stopBtn.classList.add('translate-y-[8px]', 'shadow-none', 'bg-red-700');
+                    stopBtn.classList.add('translate-y-[6px]', 'shadow-none', 'bg-red-700');
                     pressTimer = window.setTimeout(() => this.confirmStop(), 800); 
                 };
                 
                 const cancelPress = () => {
                     clearTimeout(pressTimer);
-                    stopBtn.classList.remove('translate-y-[8px]', 'shadow-none', 'bg-red-700');
+                    stopBtn.classList.remove('translate-y-[6px]', 'shadow-none', 'bg-red-700');
                 };
 
                 stopBtn.addEventListener('mousedown', startPress);
@@ -773,7 +799,6 @@
                     lucide.createIcons();
                 });
 
-                // Auto save if user navigates away
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRiding) {
                         this.endRide(true);
@@ -782,6 +807,122 @@
                 window.addEventListener('beforeunload', () => {
                     if (this.isRiding) this.endRide(true);
                 });
+            },
+
+            async toggleHRM() {
+                if (this.hrDevice && this.hrDevice.gatt.connected) {
+                    if (confirm("Are you sure you want to disconnect the HR monitor?")) {
+                        this.hrDevice.gatt.disconnect();
+                        this.hrDevice = null;
+                        this.updateHRUI(false);
+                    }
+                } else {
+                    this.connectHRM();
+                }
+            },
+
+            async connectHRM() {
+                try {
+                    this.hrDevice = await navigator.bluetooth.requestDevice({
+                        filters: [{ services: ['heart_rate'] }]
+                    });
+                    const server = await this.hrDevice.gatt.connect();
+                    const service = await server.getPrimaryService('heart_rate');
+                    const characteristic = await service.getCharacteristic('heart_rate_measurement');
+                    await characteristic.startNotifications();
+                    
+                    this.hrDevice.addEventListener('gattserverdisconnected', () => {
+                        this.updateHRUI(false);
+                        this.hrDevice = null;
+                    });
+
+                    characteristic.addEventListener('characteristicvaluechanged', (e) => {
+                        const value = e.target.value;
+                        const flags = value.getUint8(0);
+                        const rate16Bits = flags & 0x1;
+                        let heartRate = rate16Bits ? value.getUint16(1, true) : value.getUint8(1);
+                        
+                        this.metrics.currentHR = heartRate;
+                        this.updateHRUI(true, heartRate);
+                    });
+                    
+                    this.updateHRUI(true, '--');
+                } catch (error) {
+                    console.error('Bluetooth HR Error:', error);
+                    alert("Could not connect. Ensure your HRM is awake and your browser has Bluetooth permissions.");
+                }
+            },
+
+            updateHRUI(isConnected, heartRate = null) {
+                const rideBtn = document.getElementById('hr-status');
+                const rideIcon = document.getElementById('hr-icon');
+                const ridePulse = document.getElementById('hr-pulse');
+                const rideValue = document.getElementById('hr-value');
+                
+                const preBtn = document.getElementById('btn-pre-hr');
+                const preIcon = document.getElementById('pre-hr-icon');
+                const preText = document.getElementById('pre-hr-text');
+
+                if (isConnected) {
+                    if (heartRate) {
+                        rideValue.innerText = heartRate + ' BPM';
+                        if(preText) preText.innerText = heartRate + ' BPM';
+                    }
+                    rideIcon.classList.add('hidden');
+                    ridePulse.classList.remove('hidden');
+                    
+                    rideBtn.classList.replace('bg-rose-500/10', 'bg-rose-500');
+                    rideBtn.classList.replace('text-rose-500', 'text-white');
+                    
+                    if (preBtn) {
+                        preBtn.classList.add('border-rose-500');
+                        preIcon.classList.add('animate-pulse');
+                    }
+                } else {
+                    rideValue.innerText = 'CONNECT HR';
+                    rideIcon.classList.remove('hidden');
+                    ridePulse.classList.add('hidden');
+                    
+                    rideBtn.classList.replace('bg-rose-500', 'bg-rose-500/10');
+                    rideBtn.classList.replace('text-white', 'text-rose-500');
+                    
+                    if (preBtn) {
+                        preBtn.classList.remove('border-rose-500');
+                        preIcon.classList.remove('animate-pulse');
+                        preText.innerText = 'CONNECT HR';
+                    }
+                    this.metrics.currentHR = null;
+                }
+            },
+
+            warmUpGPS() {
+                const btn = document.getElementById('btn-pre-gps');
+                
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 text-amber-500 animate-spin"></i> WARMING UP...`;
+                lucide.createIcons();
+
+                if (!navigator.geolocation) {
+                    alert("GPS not supported.");
+                    return;
+                }
+
+                if (this.warmUpWatchId) navigator.geolocation.clearWatch(this.warmUpWatchId);
+
+                this.warmUpWatchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        if (pos.coords.accuracy <= 30) {
+                            this.gpsWarmedUp = true;
+                            btn.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i> GPS READY`;
+                            btn.classList.add('border-emerald-500');
+                            lucide.createIcons();
+                        }
+                    },
+                    (err) => {
+                        btn.innerHTML = `<i data-lucide="alert-triangle" class="w-5 h-5 text-red-500"></i> NO SIGNAL`;
+                        lucide.createIcons();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
             },
 
             toggleFullScreen() {
@@ -866,12 +1007,18 @@
                 this.autoPaused = false;
                 this.pauseTick = 0;
                 this.resumeTick = 0;
+                this.currentPauseDurationSec = 0;
                 this.totalElapsedMs = 0;
                 this.lapElapsedMs = 0;
                 
                 this.requestWakeLock();
                 
-                this.metrics = { distance: 0, currentSpeed: 0, maxSpeed: 0, elevationGain: 0, pathData: [], path: [], lastPosition: null, lastAltitude: null };
+                if (this.warmUpWatchId) {
+                    navigator.geolocation.clearWatch(this.warmUpWatchId);
+                    this.warmUpWatchId = null;
+                }
+
+                this.metrics = { distance: 0, currentSpeed: 0, maxSpeed: 0, elevationGain: 0, currentHR: this.metrics.currentHR, pathData: [], path: [], lastPosition: null, lastAltitude: null, hadLongPause: false };
                 this.laps = [];
                 this.currentPhotos = [];
                 this.currentWeather = null;
@@ -912,13 +1059,13 @@
                 const ride = this.history.find(r => r.id === id);
                 if (!ride) return;
 
-                // Delete the old save, we will overwrite it when they finish
                 await this.deleteRide(id, true);
 
                 this.isRiding = true;
                 this.autoPaused = true; 
                 this.pauseTick = 15;
                 this.resumeTick = 0;
+                this.currentPauseDurationSec = 0;
 
                 this.totalElapsedMs = ride.durationMs;
                 this.metrics = {
@@ -926,10 +1073,12 @@
                     currentSpeed: 0,
                     maxSpeed: ride.maxSpeedMs,
                     elevationGain: ride.elevationGainM,
+                    currentHR: this.metrics.currentHR,
                     pathData: ride.pathData,
                     path: ride.path,
                     lastPosition: null,
-                    lastAltitude: null
+                    lastAltitude: null,
+                    hadLongPause: ride.hadLongPause || false
                 };
                 this.laps = ride.laps || [];
                 this.currentPhotos = ride.photos || [];
@@ -966,8 +1115,12 @@
                 if (!this.autoPaused) {
                     this.totalElapsedMs += 1000;
                     this.lapElapsedMs += 1000;
+                    
+                    if (this.currentPauseDurationSec >= 300) {
+                        this.metrics.hadLongPause = true;
+                    }
+                    this.currentPauseDurationSec = 0;
 
-                    // 15 seconds at 0 mph to pause
                     if (currentMph < 0.5) {
                         this.pauseTick++;
                         if (this.pauseTick >= 15) {
@@ -979,7 +1132,8 @@
                         this.pauseTick = 0;
                     }
                 } else {
-                    // 2 seconds over 2 mph to resume
+                    this.currentPauseDurationSec++;
+                    
                     if (currentMph >= 2.0) {
                         this.resumeTick++;
                         if (this.resumeTick >= 2) {
@@ -1145,11 +1299,11 @@
                 const lTab = document.getElementById('tab-lap');
                 
                 if(mode === 'total') {
-                    tTab.className = "px-8 py-3 sm:py-4 rounded-full text-lg sm:text-xl font-black bg-cyan-500 text-white transition-colors tracking-wide w-32 sm:w-40 text-center shadow-sm";
-                    lTab.className = "px-8 py-3 sm:py-4 rounded-full text-lg sm:text-xl font-black theme-muted transition-colors tracking-wide w-32 sm:w-40 text-center";
+                    tTab.className = "px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-black bg-cyan-500 text-white transition-colors tracking-wide w-24 sm:w-32 text-center shadow-sm";
+                    lTab.className = "px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-black theme-muted transition-colors tracking-wide w-24 sm:w-32 text-center";
                 } else {
-                    lTab.className = "px-8 py-3 sm:py-4 rounded-full text-lg sm:text-xl font-black bg-cyan-500 text-white transition-colors tracking-wide w-32 sm:w-40 text-center shadow-sm";
-                    tTab.className = "px-8 py-3 sm:py-4 rounded-full text-lg sm:text-xl font-black theme-muted transition-colors tracking-wide w-32 sm:w-40 text-center";
+                    lTab.className = "px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-black bg-cyan-500 text-white transition-colors tracking-wide w-24 sm:w-32 text-center shadow-sm";
+                    tTab.className = "px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-black theme-muted transition-colors tracking-wide w-24 sm:w-32 text-center";
                 }
                 this.updateDashboard();
                 const displayMs = this.metricsViewMode === 'total' ? this.totalElapsedMs : this.lapElapsedMs;
@@ -1342,6 +1496,7 @@
                         weather: this.currentWeather,
                         sunsetTime: this.sunsetTime,
                         isMateoAndDaddy: isMateoAndDaddy,
+                        hadLongPause: this.metrics.hadLongPause || false,
                         pathData: [...this.metrics.pathData],
                         path: [...this.metrics.path],
                         laps: [...this.laps],
@@ -1400,7 +1555,7 @@
                         if (isMdMode) {
                             if (rMph >= 18) badges.add('sugar_rush');
                             if (wInfo && wInfo.code >= 51 && wInfo.code <= 67) badges.add('puddle_jumper');
-                            if (r.durationMs > 10 * 60000 && r.distanceM < 1609) badges.add('snack_break');
+                            if (r.hadLongPause) badges.add('snack_break');
                             if (day === 0 || day === 6) badges.add('weekend_warrior');
                             if (rClimbFt >= 100) badges.add('dino_legs');
                             if (r.photos && r.photos.length >= 3) badges.add('freeze_frame');
@@ -1409,14 +1564,14 @@
                             if (hour < 9) badges.add('early_explorer');
                             if (hour >= 18) badges.add('night_owl');
                         } else {
-                            if (rMph >= 30) badges.add('midlife');
+                            if (rMph >= 30) badges.add('aero');
                             if (hour < 6) badges.add('dawn_patrol');
                             if ((hour >= 6 && hour <= 9) || (hour >= 16 && hour <= 18)) badges.add('commuter');
                             if (rDistMi >= 20) badges.add('century_prep');
                             if (hour >= 11 && hour <= 13) badges.add('lunch_lap');
                             if (r.calories >= 500) badges.add('calorie_crush');
                             if (rClimbFt >= 1000) badges.add('alpine');
-                            if (r.durationMs >= 2 * 3600 * 1000) badges.add('escape');
+                            if (r.durationMs >= 2 * 3600 * 1000) badges.add('zen_master');
                             if (r.calories >= 1000) badges.add('cardiac');
                             if (r.sunsetTime && (r.date + r.durationMs > r.sunsetTime)) badges.add('night_rider');
                         }
